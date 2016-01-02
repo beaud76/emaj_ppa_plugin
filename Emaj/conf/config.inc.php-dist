@@ -1,16 +1,14 @@
 <?php
-	/* Configuration file for the E-Maj plugin */
+	/* Configuration file for the E-Maj phpPgAdmin plugin */
 
-	/* Pathname for the psql executable file 
-	 * This parameter is used to submit 'batch' rollback operations (E-Maj 1.1+) 
-	 */
-	//$plugin_conf['psql_path'] = '/my/path/to/postgres/bin/psql.exe';
-	//$plugin_conf['psql_path'] = 'C:\\Program Files\\postgresql\\bin\\psql.exe';
+    /* Uncomment and adjust the value of each parameter */
 
-	/* Directory containing temporary files
-	 * This parameter is used to submit 'batch' rollback operations (E-Maj 1.1+) 
-	 */
-	//$plugin_conf['temp_dir'] = '/tmp';
-	//$plugin_conf['temp_dir'] = 'C:\\WINDOWS\\temp';
+	/* Pathname for the psql executable file (used to submit batch rollback operations */
+//	$plugin_conf['psql_path'] = '/usr/local/postgresql/9.4/bin/psql';                    // unix style path
+//  $plugin_conf['psql_path'] = 'C:\\Program Files\\PostgreSQL\\9.4\\bin\\psql.exe';     // windows style path
+
+	/* Directory containing temporary files (used to submit batch rollback operations */
+//	$plugin_conf['temp_dir'] = '/tmp';                                                   // unix style path
+//	$plugin_conf['temp_dir'] = 'C:\\Users\\Default\\AppData\\Local\\Temp';               // windows style path
 
 ?>

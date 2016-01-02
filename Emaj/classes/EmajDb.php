@@ -22,6 +22,7 @@ class EmajDb {
 	private $emaj_adm = null;
 	private $emaj_viewer = null;
 	private $dblink_usable = null;
+	private $asyncRlbkUsable = null;
 
 	/**
 	 * Constructor
@@ -85,7 +86,7 @@ class EmajDb {
 			$this->emaj_adm = true;
 		}else{
 		// otherwise, is the current role member of emaj_adm role ?
-			$sql = "SELECT CASE WHEN pg_has_role('emaj_adm','USAGE') THEN 1 ELSE 0 END AS is_emaj_adm";
+			$sql = "SELECT CASE WHEN pg_catalog.pg_has_role('emaj_adm','USAGE') THEN 1 ELSE 0 END AS is_emaj_adm";
 			$this->emaj_adm = $data->selectField($sql,'is_emaj_adm');
 		}
 		return $this->emaj_adm;
@@ -108,7 +109,7 @@ class EmajDb {
 			$this->emaj_viewer = true;
 		}else{
 		// otherwise, is the current role member of emaj_viewer role ?
-			$sql = "SELECT CASE WHEN pg_has_role('emaj_viewer','USAGE') THEN 1 ELSE 0 END AS is_emaj_viewer";
+			$sql = "SELECT CASE WHEN pg_catalog.pg_has_role('emaj_viewer','USAGE') THEN 1 ELSE 0 END AS is_emaj_viewer";
 			$this->emaj_viewer = $data->selectField($sql,'is_emaj_viewer');
 		}
 		return $this->emaj_viewer;
@@ -124,8 +125,12 @@ class EmajDb {
 
 		global $data;
 
-		// opens a dblink connection and analyse the result
-		$sql = "SELECT CASE WHEN \"{$this->emaj_schema}\"._dblink_open_cnx('test') >= 0 THEN 1 ELSE 0 END as cnx_ok";
+		// if the _dblink_open_cnx() function is available for the user, 
+		//   open a dblink connection and analyse the result
+		$sql = "SELECT CASE 
+					WHEN pg_catalog.has_function_privilege('\"{$this->emaj_schema}\"._dblink_open_cnx(text)', 'EXECUTE')
+						AND \"{$this->emaj_schema}\"._dblink_open_cnx('test') >= 0 THEN 1 
+					ELSE 0 END as cnx_ok";
 		$this->dblink_usable = $data->selectField($sql,'cnx_ok');
 
 		// close the test connection if open
@@ -135,6 +140,45 @@ class EmajDb {
 		}
 
 		return $this->dblink_usable;
+	}
+
+	/**
+	 * Determines whether or not the asynchronous rollback can be used by the plugin.
+	 * It checks the psql_path and temp_dir parameters from the plugin configuration file
+	 * If they are set, one tries to use them.
+	 */
+	function isAsyncRlbkUsable($conf) {
+		// Access cache
+		if ($this->asyncRlbkUsable !== null) return $this->asyncRlbkUsable;
+
+		global $misc;
+
+		$this->asyncRlbkUsable = 0;
+
+		// check if the parameters are set
+		if (isset($conf['psql_path']) && isset($conf['temp_dir'])) {
+
+		// check the psql exe path supplied in the config file, by executing a simple "psql --version" command
+			$psqlExe = $misc->escapeShellCmd($conf['psql_path']);
+			$version = array();
+			preg_match("/(\d+(?:\.\d+)?)(?:\.\d+)?.*$/", exec($psqlExe . " --version"), $version);
+			if (!empty($version)) {
+
+		// ok, check a file can be written into the temp directory supplied in the config file 
+				$sep = (substr(php_uname(), 0, 3) == "Win") ? '\\' : '/';
+				$testFileName = $conf['temp_dir'] . $sep . 'rlbk_report_test';
+				$f = fopen($testFileName,'w');
+				if ($f) {
+					fclose($f);
+					unlink($testFileName);
+
+		// it's OK
+					$this->asyncRlbkUsable = 1;
+				}
+			}
+		}
+
+		return $this->asyncRlbkUsable;
 	}
 
 	/**
@@ -160,24 +204,38 @@ class EmajDb {
 	}
 
 	/**
-	 * Gets emaj version from emaj_param table
+	 * Gets emaj version from the emaj_param table or the emaj_visible_param if it exists
 	 */
 	function getVersion() {
 		global $data;
 
-		$sql = "SELECT param_value_text AS version
-		 		FROM \"{$this->emaj_schema}\".emaj_param
-				WHERE param_key = 'emaj_version'";
+		// look at the postgres catalog to see if the emaj_visible_param view exists or not. If not (i.e. old emaj version), use the emaj_param table instead.
+		$sql = "SELECT CASE WHEN EXISTS 
+					(SELECT relname FROM pg_catalog.pg_class, pg_catalog.pg_namespace
+						WHERE relnamespace = pg_namespace.oid AND relname = 'emaj_visible_param' AND nspname = '{$this->emaj_schema}')
+				THEN 'emaj_visible_param' ELSE 'emaj_param' END AS param_table";
 		$rs = $data->selectSet($sql);
 		if ($rs->recordCount() == 1){
-			$this->emaj_version = $rs->fields['version'];
-			if (substr_count($this->emaj_version, '.')==2){
-				list($v1,$v2,$v3) = explode(".",$this->emaj_version);
-				$this->emaj_version_num = 10000 * $v1 + 100 * $v2 + $v3;
-			}
-			if (substr_count($this->emaj_version, '.')==1){
-				list($v1,$v2) = explode(".",$this->emaj_version);
-				$this->emaj_version_num = 10000 * $v1 + 100 * $v2;
+			$param_table = $rs->fields['param_table'];
+
+			// search the 'emaj_version' parameter into the proper view or table
+			$sql = "SELECT param_value_text AS version
+					FROM \"{$this->emaj_schema}\".{$param_table}
+					WHERE param_key = 'emaj_version'";
+			$rs = $data->selectSet($sql);
+			if ($rs->recordCount() == 1){
+				$this->emaj_version = $rs->fields['version'];
+				if (substr_count($this->emaj_version, '.')==2){
+					list($v1,$v2,$v3) = explode(".",$this->emaj_version);
+					$this->emaj_version_num = 10000 * $v1 + 100 * $v2 + $v3;
+				}
+				if (substr_count($this->emaj_version, '.')==1){
+					list($v1,$v2) = explode(".",$this->emaj_version);
+					$this->emaj_version_num = 10000 * $v1 + 100 * $v2;
+				}
+			}else{
+				$this->emaj_version = '?';
+				$this->emaj_version_num = 0;
 			}
 		}else{
 			$this->emaj_version = '?';
@@ -409,32 +467,47 @@ class EmajDb {
 
 		$data->clean($group);
 
-		$sql = "SELECT rel_schema, rel_tblseq, rel_kind, rel_priority";
-		if ($this->getNumEmajVersion() >= 10000){	// version >= 1.0.0
-			$sql .=
-				", rel_log_schema, rel_log_dat_tsp, rel_log_idx_tsp";
+		if ($this->getNumEmajVersion() >= 10200){	// version >= 1.2.0
+			$sql = "SELECT rel_schema, rel_tblseq, rel_kind, rel_priority,
+						rel_log_schema, rel_log_dat_tsp, rel_log_idx_tsp,
+						substring(rel_log_function FROM '(.*)\_log\_fnct') AS emaj_names_prefix,
+						CASE WHEN rel_kind = 'r' THEN 
+							pg_total_relation_size(quote_ident(rel_log_schema) || '.' || quote_ident(rel_log_table))
+						END AS byte_log_size,
+						CASE WHEN rel_kind = 'r' THEN 
+							pg_size_pretty(pg_total_relation_size(quote_ident(rel_log_schema) || '.' || quote_ident(rel_log_table)))
+						END AS pretty_log_size 
+					FROM \"{$this->emaj_schema}\".emaj_relation
+					WHERE rel_group = '{$group}'
+					ORDER BY rel_schema, rel_tblseq";
+		} else {
+			$sql = "SELECT rel_schema, rel_tblseq, rel_kind, rel_priority";
+			if ($this->getNumEmajVersion() >= 10000){	// version >= 1.0.0
+				$sql .=
+					", rel_log_schema, rel_log_dat_tsp, rel_log_idx_tsp";
+			}
+			$sql .= ", CASE WHEN rel_kind = 'r' THEN 
+						pg_total_relation_size(";
+			if ($this->getNumEmajVersion() >= 10000){	// version >= 1.0.0
+				$sql .= "quote_ident(rel_log_schema)";
+			}else{
+				$sql .= "'{$this->emaj_schema}'";
+			}
+			$sql .= " || '.\"' || rel_schema || '_' || rel_tblseq || '_log\"')
+						END as byte_log_size
+					, CASE WHEN rel_kind = 'r' THEN 
+						pg_size_pretty(pg_total_relation_size(";
+			if ($this->getNumEmajVersion() >= 10000){	// version >= 1.0.0
+				$sql .= "quote_ident(rel_log_schema)";
+			}else{
+				$sql .= "'{$this->emaj_schema}'";
+			}
+			$sql .= " || '.\"' || rel_schema || '_' || rel_tblseq || '_log\"'))
+						END as pretty_log_size 
+					FROM \"{$this->emaj_schema}\".emaj_relation
+					WHERE rel_group = '{$group}'
+					ORDER BY rel_schema, rel_tblseq";
 		}
-		$sql .= ", CASE WHEN rel_kind = 'r' THEN 
-					pg_total_relation_size(";
-		if ($this->getNumEmajVersion() >= 10000){	// version >= 1.0.0
-			$sql .= "quote_ident(rel_log_schema)";
-		}else{
-			$sql .= "'{$this->emaj_schema}'";
-		}
-		$sql .= " || '.\"' || rel_schema || '_' || rel_tblseq || '_log\"')
-					END as byte_log_size
-				 , CASE WHEN rel_kind = 'r' THEN 
-					pg_size_pretty(pg_total_relation_size(";
-		if ($this->getNumEmajVersion() >= 10000){	// version >= 1.0.0
-			$sql .= "quote_ident(rel_log_schema)";
-		}else{
-			$sql .= "'{$this->emaj_schema}'";
-		}
-		$sql .= " || '.\"' || rel_schema || '_' || rel_tblseq || '_log\"'))
-					END as pretty_log_size 
-				FROM \"{$this->emaj_schema}\".emaj_relation
-				WHERE rel_group = '{$group}'
-				ORDER BY rel_schema, rel_tblseq";
 
 		return $data->selectSet($sql);
 	}
@@ -479,7 +552,24 @@ class EmajDb {
 					grpdef_group, grpdef_priority ";
 		if ($this->getNumEmajVersion() >= 10000){			// version >= 1.0.0
 			$sql .=
-				", grpdef_log_schema_suffix, grpdef_log_dat_tsp, grpdef_log_idx_tsp ";
+				", grpdef_log_schema_suffix ";
+		} else {
+			$sql .=
+				", NULL AS grpdef_log_schema_suffix ";
+		}
+		if ($this->getNumEmajVersion() >= 10200){			// version >= 1.2.0
+			$sql .=
+				", grpdef_emaj_names_prefix ";
+		} else {
+			$sql .=
+				", NULL AS grpdef_emaj_names_prefix ";
+		}
+		if ($this->getNumEmajVersion() >= 10000){			// version >= 1.0.0
+			$sql .=
+				", grpdef_log_dat_tsp, grpdef_log_idx_tsp ";
+		} else {
+			$sql .=
+				", NULL AS grpdef_log_dat_tsp, NULL AS grpdef_log_idx_tsp ";
 		}
 		$sql .=
 			   "FROM pg_catalog.pg_class c
@@ -492,7 +582,24 @@ class EmajDb {
 					grpdef_group , grpdef_priority ";
 		if ($this->getNumEmajVersion() >= 10000){			// version >= 1.0.0
 			$sql .=
-				", grpdef_log_schema_suffix, grpdef_log_dat_tsp, grpdef_log_idx_tsp ";
+				", grpdef_log_schema_suffix ";
+		} else {
+			$sql .=
+				", NULL AS grpdef_log_schema_suffix ";
+		}
+		if ($this->getNumEmajVersion() >= 10200){			// version >= 1.2.0
+			$sql .=
+				", grpdef_emaj_names_prefix ";
+		} else {
+			$sql .=
+				", NULL AS grpdef_emaj_names_prefix ";
+		}
+		if ($this->getNumEmajVersion() >= 10000){			// version >= 1.0.0
+			$sql .=
+				", grpdef_log_dat_tsp, grpdef_log_idx_tsp ";
+		} else {
+			$sql .=
+				", NULL AS grpdef_log_dat_tsp, NULL AS grpdef_log_idx_tsp ";
 		}
 		$sql .=
 			   "FROM emaj.emaj_group_def
@@ -502,36 +609,6 @@ class EmajDb {
 				ORDER BY 1, relname";
 
 		return $data->selectSet($sql);
-	}
-
-	/**
-	 * Delete a table or sequence from emaj_group_def table
-	 */
-	function removeTblSeq($schema,$tblseq,$group) {
-		global $data;
-
-		$data->clean($schema);
-		$data->clean($tblseq);
-		$data->clean($group);
-
-		// Begin transaction.  We do this so that we can ensure only one row is deleted
-		$status = $data->beginTransaction();
-		if ($status != 0) {
-			$data->rollbackTransaction();
-			return -1;
-		}
-
-		$sql = "DELETE FROM emaj.emaj_group_def 
-				WHERE grpdef_schema = '{$schema}' AND grpdef_tblseq = '{$tblseq}' AND grpdef_group = '{$group}'";
-		// Delete row
-		$status = $data->execute($sql);
-
-		if ($status != 0 || $data->conn->Affected_Rows() != 1) {
-			$data->rollbackTransaction();
-			return -2;
-		}
-		// End transaction
-		return $data->endTransaction();
 	}
 
 	/**
@@ -577,7 +654,7 @@ class EmajDb {
 	/**
 	 * Insert a table or sequence into the emaj_group_def table
 	 */
-	function assignTblSeq($schema,$tblseq,$group,$priority,$logSchemaSuffix,$logDatTsp,$logIdxTsp) {
+	function assignTblSeq($schema,$tblseq,$group,$priority,$logSchemaSuffix,$emajNamesPrefix,$logDatTsp,$logIdxTsp) {
 		global $data;
 
 		$data->clean($schema);
@@ -585,6 +662,7 @@ class EmajDb {
 		$data->clean($group);
 		$data->clean($priority);
 		$data->clean($logSchemaSuffix);
+		$data->clean($emajNamesPrefix);
 		$data->clean($logDatTsp);
 		$data->clean($logIdxTsp);
 
@@ -603,7 +681,15 @@ class EmajDb {
 		$sql = "INSERT INTO emaj.emaj_group_def (grpdef_schema, grpdef_tblseq, grpdef_group, grpdef_priority ";
 		if ($this->getNumEmajVersion() >= 10000){	// version >= 1.0.0
 			$sql .=
-				", grpdef_log_schema_suffix, grpdef_log_dat_tsp, grpdef_log_idx_tsp ";
+				", grpdef_log_schema_suffix ";
+		}
+		if ($this->getNumEmajVersion() >= 10200){	// version >= 1.2.0
+			$sql .=
+				", grpdef_emaj_names_prefix ";
+		}
+		if ($this->getNumEmajVersion() >= 10000){	// version >= 1.0.0
+			$sql .=
+				", grpdef_log_dat_tsp, grpdef_log_idx_tsp ";
 		}
 		$sql .=
 				") VALUES ('{$schema}', '{$tblseq}', '{$group}' ";
@@ -616,6 +702,14 @@ class EmajDb {
 				$sql .= ", NULL";
 			else
 				$sql .= ", '{$logSchemaSuffix}'";
+		}
+		if ($this->getNumEmajVersion() >= 10200){	// version >= 1.2.0
+			if ($emajNamesPrefix == '' || $relkind == 'S')
+				$sql .= ", NULL";
+			else
+				$sql .= ", '{$emajNamesPrefix}'";
+		}
+		if ($this->getNumEmajVersion() >= 10000){	// version >= 1.0.0
 			if ($logDatTsp == '' || $relkind == 'S')
 				$sql .= ", NULL";
 			else
@@ -628,6 +722,97 @@ class EmajDb {
 		$sql .= ")";
 
 		return $data->execute($sql);
+	}
+
+	/**
+	 * Update a table or sequence into the emaj_group_def table
+	 */
+	function updateTblSeq($schema,$tblseq,$group,$priority,$logSchemaSuffix,$emajNamesPrefix,$logDatTsp,$logIdxTsp) {
+		global $data;
+
+		$data->clean($schema);
+		$data->clean($tblseq);
+		$data->clean($group);
+		$data->clean($priority);
+		$data->clean($logSchemaSuffix);
+		$data->clean($emajNamesPrefix);
+		$data->clean($logDatTsp);
+		$data->clean($logIdxTsp);
+
+		// get the relkind of the tblseq to process
+		$sql = "SELECT relkind 
+				FROM pg_catalog.pg_class, pg_catalog.pg_namespace 
+				WHERE pg_namespace.oid = relnamespace AND relname = '{$tblseq}' AND nspname = '{$schema}'";
+		$rs = $data->selectSet($sql);
+		if ($rs->recordCount() == 1){
+			$relkind = $rs->fields['relkind'];
+		}else{
+			$relkind = "?";
+		}
+
+		// Update the row in the emaj_group_def table
+		$sql = "UPDATE emaj.emaj_group_def SET 
+					grpdef_group = '{$group}'";
+		if ($priority == '')
+			$sql .= ", grpdef_priority = NULL";
+		else
+			$sql .= ", grpdef_priority = {$priority}";
+		if ($this->getNumEmajVersion() >= 10000){	// version >= 1.0.0
+			if ($logSchemaSuffix == '' || $relkind == 'S')
+				$sql .= ", grpdef_log_schema_suffix = NULL";
+			else
+				$sql .= ", grpdef_log_schema_suffix = '{$logSchemaSuffix}'";
+		}
+		if ($this->getNumEmajVersion() >= 10200){	// version >= 1.2.0
+			if ($emajNamesPrefix == '' || $relkind == 'S')
+				$sql .= ", grpdef_emaj_names_prefix = NULL";
+			else
+				$sql .= ", grpdef_emaj_names_prefix = '{$emajNamesPrefix}'";
+		}
+		if ($this->getNumEmajVersion() >= 10000){	// version >= 1.0.0
+			if ($logDatTsp == '' || $relkind == 'S')
+				$sql .= ", grpdef_log_dat_tsp = NULL";
+			else
+				$sql .= ", grpdef_log_dat_tsp = '{$logDatTsp}'";
+			if ($logIdxTsp == '' || $relkind == 'S')
+				$sql .= ", grpdef_log_idx_tsp = NULL";
+			else
+				$sql .= ", grpdef_log_idx_tsp = '{$logIdxTsp}'";
+		}
+		$sql .=
+               " WHERE grpdef_schema = '{$schema}' AND grpdef_tblseq = '{$tblseq}'";
+
+		return $data->execute($sql);
+	}
+
+	/**
+	 * Delete a table or sequence from emaj_group_def table
+	 */
+	function removeTblSeq($schema,$tblseq,$group) {
+		global $data;
+
+		$data->clean($schema);
+		$data->clean($tblseq);
+		$data->clean($group);
+
+		// Begin transaction.  We do this so that we can ensure only one row is deleted
+		$status = $data->beginTransaction();
+		if ($status != 0) {
+			$data->rollbackTransaction();
+			return -1;
+		}
+
+		$sql = "DELETE FROM emaj.emaj_group_def 
+				WHERE grpdef_schema = '{$schema}' AND grpdef_tblseq = '{$tblseq}' AND grpdef_group = '{$group}'";
+		// Delete row
+		$status = $data->execute($sql);
+
+		if ($status != 0 || $data->conn->Affected_Rows() != 1) {
+			$data->rollbackTransaction();
+			return -2;
+		}
+		// End transaction
+		return $data->endTransaction();
 	}
 
 	/**
@@ -1018,19 +1203,18 @@ class EmajDb {
 
 		$data->clean($group);
 		$data->clean($mark);
+		$data->clean($psqlExe);
+		$data->clean($tempDir);
 
 		// Initialize the rollback operation and get its rollback id
 		$isL = $isLogged ? 'true' : 'false';
 		$sql = "SELECT \"{$this->emaj_schema}\"._rlbk_init(array['{$group}'], '{$mark}', {$isL}, 1, false) as rlbk_id";
 		$rlbkId = $data->selectField($sql,'rlbk_id');
 
-		// Build the psql report file name
-		$psqlReport = "{$tempDir}rlbk_{$rlbkId}_report";
-
-		// Submit the rollback execution asynchronously
+		// Build the psql report file name, the SQL command and submit the rollback execution asynchronously
+		$psqlReport = "rlbk_{$rlbkId}_report";
 		$sql = "SELECT \"{$this->emaj_schema}\"._rlbk_async({$rlbkId},false)";
-
-		$this->execPsqlInBackground($psqlExe,$sql,$psqlReport);
+		$this->execPsqlInBackground($psqlExe,$sql,$tempDir,$psqlReport);
 
 		return $rlbkId;
 	}
@@ -1038,10 +1222,8 @@ class EmajDb {
 	/**
 	 * Execute an external psql command in background
 	 */
-	function execPsqlInBackground($psqlExe,$stmt,$psqlReport) {
+	function execPsqlInBackground($psqlExe,$stmt,$tempDir,$psqlReport) {
 		global $misc;
-
-		$psqlCmd = "{$psqlExe} -d {$_REQUEST['database']} -c \"{$stmt}\" -o \"{$psqlReport}\" 2>&1";
 
 		// Set environmental variables that psql needs to connect
 		$server_info = $misc->getServerInfo();
@@ -1056,9 +1238,12 @@ class EmajDb {
 			putenv('PGPORT=' . $port);
 		}
 
+		// Build and submit the psql command
 		if (substr(php_uname(), 0, 3) == "Win"){
+			$psqlCmd = "{$psqlExe} -d {$_REQUEST['database']} -c \"{$stmt}\" -o \"{$tempDir}\\{$psqlReport}\" 2>&1";
 			pclose(popen("start /b \"\" ". $psqlCmd, "r"));
 		} else {
+			$psqlCmd = "{$psqlExe} -d {$_REQUEST['database']} -c \"{$stmt}\" -o \"{$tempDir}/{$psqlReport}\" 2>&1";
 			exec($psqlCmd . " > /dev/null &");  
 		}
 	}
@@ -1199,7 +1384,7 @@ class EmajDb {
 		$sql .= " ORDER BY rlbk_id DESC ";
 		if ($nb > 0)
 			$sql .= "LIMIT {$nb}";
-		$sql .= ") AS t	ORDER BY rlbk_id ASC";
+		$sql .= ") AS t";
 
 		return $data->selectSet($sql);
 	}
@@ -1216,7 +1401,7 @@ class EmajDb {
 					to_char(rlbk_elapse,'HH24:MI:SS') as rlbk_current_elapse, rlbk_remaining,
 					rlbk_completion_pct 
 				FROM emaj.emaj_rollback_activity() 
-				ORDER BY rlbk_id";
+				ORDER BY rlbk_id DESC";
 
 		return $data->selectSet($sql);
 	}

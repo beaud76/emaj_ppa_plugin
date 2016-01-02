@@ -62,17 +62,22 @@
 	$plugin_lang['emajnewtsp'] = '-- nouveau tablespace --';
 	$plugin_lang['emajspecifytblseqtoassign'] = 'Spécifier au moins une table ou séquence à affecter';
 	$plugin_lang['emajtblseqyetgroup'] = 'Erreur, " %s.%s " est déjà affecté à un groupe de tables.';
-	$plugin_lang['emajassignatblseq'] = 'E-Maj : Affecter des tables / séquences à un groupe de tables';
+	$plugin_lang['emajassigntblseq'] = 'E-Maj : Affecter des tables / séquences à un groupe de tables';
 	$plugin_lang['emajconfirmassigntblseq'] = 'Affecter : %s';
-	$plugin_lang['emajenterpriority'] = 'Priorité de traitement ';
-	$plugin_lang['emajpriorityhelp'] = 'Tables et séquences traitées par ordre croissant de priorité';
-	$plugin_lang['emajenterlogschema'] = 'Suffixe du schéma de log ';
-	$plugin_lang['emajlogschemahelp'] = 'Schema de log = \'emaj\' + suffixe';
-	$plugin_lang['emajenterlogdattsp'] = 'Tablespace pour la table de log ';
-	$plugin_lang['emajenterlogidxtsp'] = 'Tablespace pour l\'index de la table de log ';
+	$plugin_lang['emajenterpriority'] = 'Priorité de traitement';
+	$plugin_lang['emajpriorityhelp'] = 'Les tables et séquences sont traitées par ordre croissant de priorité';
+	$plugin_lang['emajenterlogschema'] = 'Suffixe du schéma de log';
+	$plugin_lang['emajlogschemahelp'] = 'Schema de log = \'emaj\' + suffixe ; défaut = \'emaj\'';
+	$plugin_lang['emajenternameprefix'] = 'Préfixe des noms d\'objets E-Maj';
+	$plugin_lang['emajnameprefixhelp'] = 'Défaut = &lt;schéma&gt;_&lt;table&gt; ; doit être unique';
+	$plugin_lang['emajenterlogdattsp'] = 'Tablespace pour la table de log';
+	$plugin_lang['emajenterlogidxtsp'] = 'Tablespace pour l\'index de la table de log';
+	$plugin_lang['emajspecifytblseqtoupdate'] = 'Spécifier au moins une table ou séquence à modifier';
+	$plugin_lang['emajupdatetblseq'] = 'E-Maj : Modifier les propriétés d\'une table / séquence dans un groupe de tables';
+	$plugin_lang['emajconfirmupdatetblseq'] = 'Modifier : %s';
 	$plugin_lang['emajspecifytblseqtoremove'] = 'Spécifier au moins une table ou séquence à retirer';
 	$plugin_lang['emajtblseqnogroup'] = 'Erreur, " %s.%s " n\'est actuellement affecté à aucun groupe de tables.';
-	$plugin_lang['emajremoveatblseq'] = 'E-Maj : Retirer des tables / séquences d\'un groupe de tables';
+	$plugin_lang['emajremovetblseq'] = 'E-Maj : Retirer des tables / séquences d\'un groupe de tables';
 	$plugin_lang['emajconfirmremovetblseq'] = 'êtes-vous sûr de vouloir retirer " %s.%s " du groupe de tables "%s" ?';
 	$plugin_lang['emajmodifygroupok'] = 'La modification est enregistrée. Elle sera effective après (re)création des groupes de tables concernés.';
 	$plugin_lang['emajmodifygrouperr'] = 'Erreur lors du changement de composition des groupes de tables.';
@@ -106,10 +111,11 @@
 	$plugin_lang['emajcurrentduration'] = 'Durée actuelle';
 	$plugin_lang['emajestimremaining'] = 'Restant estimée';
 	$plugin_lang['emajpctcompleted'] = '% effectué';
+	$plugin_lang['emajinprogressrlbk'] = 'Rollbacks E-Maj en cours';
+	$plugin_lang['emajrlbkmonitornotavailable'] = 'Le suivi des rollbacks en cours n\'est pas disponible.';
+	$plugin_lang['emajcompletedrlbk'] = 'Rollbacks E-Maj terminés';
 	$plugin_lang['emajnbtabletoprocess'] = 'Nb tables à traiter';
 	$plugin_lang['emajnbseqtoprocess'] = 'Nb séquences à traiter';
-	$plugin_lang['emajcompletedrlbk'] = 'Rollbacks E-Maj terminés';
-	$plugin_lang['emajinprogressrlbk'] = 'Rollbacks E-Maj en cours';
 	$plugin_lang['emajnorlbk'] = 'Aucun rollback.';
 	$plugin_lang['emajfilterrlbk1'] = 'Afficher les';
 	$plugin_lang['emajfilterrlbk2'] = 'plus récents';
@@ -156,6 +162,7 @@
 	$plugin_lang['emajlogschema'] = 'Schéma de log';
 	$plugin_lang['emajlogdattsp'] = 'Tablespace log';
 	$plugin_lang['emajlogidxtsp'] = 'Tablespace index log';
+	$plugin_lang['emajnamesprefix'] = 'Préfixe nom objets';
 
 	// Group creation
 	$plugin_lang['emajcreateagroup'] = 'E-Maj : Créer un groupe de tables';
@@ -189,7 +196,6 @@
 	$plugin_lang['emajconfirmstartgroup'] = 'Démarrer le groupe de tables "%s"';
 	$plugin_lang['emajinitmark'] = 'Marque initiale';
 	$plugin_lang['emajoldlogsdeletion'] = 'Suppression des anciens logs';
-//	$plugin_lang['emajinitmarkerr'] = 'Il faut donner un nom à la marque initiale.';
 	$plugin_lang['emajcantstartgroup'] = 'Le groupe de tables "%s" est déjà  démarré.';
 	$plugin_lang['emajstartgroupok'] = 'Le groupe de tables "%s" est démarré avec la marque "%s".';
 	$plugin_lang['emajstartgrouperr'] = 'Erreur lors du démarrage du groupe de tables "%s" !';	
@@ -227,7 +233,6 @@
 	// Set Mark for one or several groups
 	$plugin_lang['emajsetamark'] = 'E-Maj : Poser une marque';
 	$plugin_lang['emajconfirmsetmarkgroup'] = 'Pose d\'une marque pour le(s) groupe(s) de tables "%s" :';
-//	$plugin_lang['emajmarkerr'] = 'Il faut donner un nom à la marque.';
 	$plugin_lang['emajcantsetmark'] = 'Aucune marque ne peut être posée.';
 	$plugin_lang['emajinvalidmark'] = 'La marque saisie (%s) est invalide.';
 	$plugin_lang['emajsetmarkgroupok'] = 'La marque "%s" est posée pour le(s) groupe(s) de tables "%s".';
@@ -244,10 +249,14 @@
 	$plugin_lang['emajrlbkagroup'] = 'E-Maj : Rollbacker un groupe de tables';
 	$plugin_lang['emajconfirmrlbkgroup'] = 'Rollback du groupe de tables "%s" à la marque "%s"';
 	$plugin_lang['emajselectmarkgroup'] = 'Rollback du groupe de tables "%s" à la marque : ';
+	$plugin_lang['emajrlbkthenmonitor'] = 'Rollback et suivi';
 	$plugin_lang['emajinvalidrlbkmark'] = 'La marque "%s" n\'est plus valide.';
 	$plugin_lang['emajcantrlbkgroup'] = 'Le groupe de tables ne peut être rollbacké.';
 	$plugin_lang['emajrlbkgroupok'] = 'Le rollback du groupe de tables "%s" à la marque "%s" est effectué.';
 	$plugin_lang['emajrlbkgrouperr'] = 'Erreur lors du rollback du groupe de tables "%s" à la marque "%s" !';
+	$plugin_lang['emajbadpsqlpath'] = 'Rollback asynchrone impossible : le chemin de la commande psql configurée (%s) est invalide.';
+	$plugin_lang['emajbadtempdir'] = 'Rollback asynchrone impossible : le répertoire temporaire configuré (%s) est invalide.';
+	$plugin_lang['emajasyncrlbkstarted'] = 'Rollback démarré (id = %s).';
 
 	// Groups rollback
 	$plugin_lang['emajrlbkgroups'] = 'E-Maj : Rollbacker des groupes de tables';

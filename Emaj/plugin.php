@@ -243,6 +243,8 @@ class Emaj extends Plugin {
 		'stop_groups',
 		'stop_groups_ok',
 		'tree',
+		'update_tblseq',
+		'update_tblseq_ok',
 		);
 		return $actions;
 	}
@@ -263,6 +265,7 @@ class Emaj extends Plugin {
 			$actions['assign']['disable'] = true;
 		}else{
 			$actions['remove']['disable'] = true;
+			$actions['update']['disable'] = true;
 		};
 		return $actions;
 	}
@@ -522,6 +525,18 @@ class Emaj extends Plugin {
 							'title' => $this->lang['emajlogschemasuffix'],
 							'field' => field('grpdef_log_schema_suffix'),
 						),
+					));
+				};
+				if ($this->emajdb->getNumEmajVersion() >= 10200){			// version >= 1.2.0
+					$columns = array_merge($columns, array(
+						'emajnamesprefix' => array(
+							'title' => $this->lang['emajnamesprefix'],
+							'field' => field('grpdef_emaj_names_prefix'),
+						),
+					));
+				};
+				if ($this->emajdb->getNumEmajVersion() >= 10000){			// version >= 1.0.0
+					$columns = array_merge($columns, array(
 						'logdattsp' => array(
 							'title' => $this->lang['emajlogdattsp'],
 							'field' => field('grpdef_log_dat_tsp'),
@@ -554,7 +569,7 @@ class Emaj extends Plugin {
 
 				$actions = array(
 					'multiactions' => array(
-						'keycols' => array('appschema' => 'nspname', 'tblseq' => 'relname', 'group' => 'grpdef_group'),
+						'keycols' => array('appschema' => 'nspname', 'tblseq' => 'relname', 'group' => 'grpdef_group', 'type' => 'relkind'),
 						'url' => "plugin.php?plugin={$this->name}&amp;back=define",
 					),
 					'assign' => array(
@@ -568,8 +583,28 @@ class Emaj extends Plugin {
 									'appschema' => field('nspname'),
 									'tblseq' => field('relname'),
 									'group' => field('grpdef_group'),
+									'type' => field('relkind'),
 								)))),
 						'multiaction' => 'assign_tblseq',
+					),
+					'update' => array(
+						'content' => $lang['strupdate'],
+						'attr' => array (
+							'href' => array (
+								'url' => 'plugin.php',
+								'urlvars' => array_merge($urlvars, array (
+									'plugin' => $this->name,
+									'action' => 'update_tblseq',
+									'type' => field('relkind'),
+									'appschema' => field('nspname'),
+									'tblseq' => field('relname'),
+									'group' => field('grpdef_group'),
+									'priority' => field('grpdef_priority'),
+									'logschemasuffix' => field('grpdef_log_schema_suffix'),
+									'emajnamesprefix' => field('grpdef_emaj_names_prefix'),
+									'logdattsp' => field('grpdef_log_dat_tsp'),
+									'logidxtsp' => field('grpdef_log_idx_tsp'),
+								)))),
 					),
 					'remove' => array(
 						'content' => $this->lang['emajremove'],
@@ -876,6 +911,7 @@ class Emaj extends Plugin {
 						headers: {
 							0: { sorter: false, filter: false },
 							7: { sorter: false, filter: false },
+							8: { filter: false },
 							},
 						emptyTo: 'none',
 						widgets: [\"zebra\", \"filter\"],
@@ -886,9 +922,7 @@ class Emaj extends Plugin {
 							stickyHeaders : 'tablesorter-stickyHeader', 
 							},
 						}
-					);";
-			if ($this->emajdb->isEmaj_Adm()){
-				echo "
+					)
 					// disable filters on all but first actions columns
 					$('#loggingGroupsTable input[data-column=\"8\"]').addClass(\"disabled\");
 					$('#loggingGroupsTable input[data-column=\"8\"]').attr(\"disabled\",\"\");
@@ -897,9 +931,7 @@ class Emaj extends Plugin {
 					$('#loggingGroupsTable input[data-column=\"10\"]').addClass(\"disabled\");
 					$('#loggingGroupsTable input[data-column=\"10\"]').attr(\"disabled\",\"\");
 					$('#loggingGroupsTable input[data-column=\"11\"]').addClass(\"disabled\");
-					$('#loggingGroupsTable input[data-column=\"11\"]').attr(\"disabled\",\"\");";
-			}
-			echo "
+					$('#loggingGroupsTable input[data-column=\"11\"]').attr(\"disabled\",\"\");
 				});
 				</script>";
 
@@ -920,6 +952,7 @@ class Emaj extends Plugin {
 						headers: {
 							0: { sorter: false, filter: false },
 							7: { sorter: false, filter: false },
+							8: { filter: false },
 							},
 						emptyTo: 'none',
 						widgets: [\"zebra\", \"filter\"],
@@ -930,9 +963,7 @@ class Emaj extends Plugin {
 							stickyHeaders : 'tablesorter-stickyHeader', 
 							},
 						}
-					)";
-			if ($this->emajdb->isEmaj_Adm()){
-				echo "
+					)
 					// disable filters on all but first actions columns
 					$('#idleGroupsTable input[data-column=\"8\"]').addClass(\"disabled\");
 					$('#idleGroupsTable input[data-column=\"8\"]').attr(\"disabled\",\"\");
@@ -943,9 +974,7 @@ class Emaj extends Plugin {
 					$('#idleGroupsTable input[data-column=\"11\"]').addClass(\"disabled\");
 					$('#idleGroupsTable input[data-column=\"11\"]').attr(\"disabled\",\"\");
 					$('#idleGroupsTable input[data-column=\"12\"]').addClass(\"disabled\");
-					$('#idleGroupsTable input[data-column=\"12\"]').attr(\"disabled\",\"\");";
-			}
-			echo "
+					$('#idleGroupsTable input[data-column=\"12\"]').attr(\"disabled\",\"\");
 				});
 				</script>";
 
@@ -1031,10 +1060,6 @@ class Emaj extends Plugin {
 			} else {
 				$rlbkRetention = $_SESSION['emaj']['RlbkRetention'];
 			}
-
-			// Get rollback information from the database
-			$inProgressRlbks = $this->emajdb->getInProgressRlbk();
-			$completedRlbks = $this->emajdb->getCompletedRlbk($nbRlbk, $rlbkRetention);
 
 			$columnsInProgressRlbk = array(
 				'rlbkId' => array(
@@ -1163,12 +1188,15 @@ class Emaj extends Plugin {
 
 			$actions = array();
 
+			// Get rollback information from the database
+			$completedRlbks = $this->emajdb->getCompletedRlbk($nbRlbk, $rlbkRetention);
+
 			echo "<h3>{$this->lang['emajinprogressrlbk']}</h3>\n";
 			if ($this->emajdb->isDblinkUsable()) {
+				$inProgressRlbks = $this->emajdb->getInProgressRlbk();
 				$this->printTable($inProgressRlbks, $columnsInProgressRlbk, $actions, 'inProgressRlbk', $this->lang['emajnorlbk']);
 			} else {
-// texte
-				echo "<p>Le suivi des rollbacks en cours n'est pas possible (pas de connexion dblink opérationnelle)</p>\n";
+				echo "<p>{$this->lang['emajrlbkmonitornotavailable']}</p>\n";
 			}
 
 			echo "<h3>{$this->lang['emajcompletedrlbk']}</h3>\n";
@@ -1480,7 +1508,7 @@ class Emaj extends Plugin {
 							2: { sorter: false, filter: false },
 							3: { sorter: false },
 							4: { sorter: false },
-							5: { sorter: false },
+							5: { sorter: false, filter: false },
 							6: { sorter: false },
 							6: { sorter: false },
 							},
@@ -1492,12 +1520,8 @@ class Emaj extends Plugin {
 							stickyHeaders : 'tablesorter-stickyHeader', 
 							},
 						}
-					)";
-			if ($this->emajdb->isEmaj_Adm()){
-				echo "
+					)
 					// disable filters on all but first actions columns
-					$('#marksTable input[data-column=\"5\"]').addClass(\"disabled\");
-					$('#marksTable input[data-column=\"5\"]').attr(\"disabled\",\"\");
 					$('#marksTable input[data-column=\"6\"]').addClass(\"disabled\");
 					$('#marksTable input[data-column=\"6\"]').attr(\"disabled\",\"\");
 					$('#marksTable input[data-column=\"7\"]').addClass(\"disabled\");
@@ -1505,9 +1529,7 @@ class Emaj extends Plugin {
 					$('#marksTable input[data-column=\"8\"]').addClass(\"disabled\");
 					$('#marksTable input[data-column=\"8\"]').attr(\"disabled\",\"\");
 					$('#marksTable input[data-column=\"9\"]').addClass(\"disabled\");
-					$('#marksTable input[data-column=\"9\"]').attr(\"disabled\",\"\");";
-			}
-			echo "
+					$('#marksTable input[data-column=\"9\"]').attr(\"disabled\",\"\");
 				});
 				</script>";
 
@@ -2024,6 +2046,14 @@ class Emaj extends Plugin {
 					),
 				));
 			};
+			if ($this->emajdb->getNumEmajVersion() >= 10200){			// version >= 1.2.0
+				$columns = array_merge($columns, array(
+					'names_prefix' => array(
+						'title' => $this->lang['emajnamesprefix'],
+						'field' => field('emaj_names_prefix'),
+					),
+				));
+			};
 			$columns = array_merge($columns, array(
 				'bytelogsize' => array(
 					'title' => $this->lang['emajlogsize'],
@@ -2105,7 +2135,7 @@ class Emaj extends Plugin {
 	}
 
 	/**
-	 * Prepare insert a table/sequence into a group: ask for priority and confirmation
+	 * Prepare insert a table/sequence into a group: ask for properties and confirmation
 	 */
 	function assign_tblseq() {
 		global $misc, $lang;
@@ -2124,11 +2154,16 @@ class Emaj extends Plugin {
 					exit();
 				}
 			}
+		} else {
+			if ($_REQUEST['group'] != ''){
+				$this->configure_groups('',sprintf($this->lang['emajtblseqyetgroup'],$_REQUEST['appschema'],$_REQUEST['tblseq']));
+				exit();
+			}
 		}
 
 		$this->printPageHeader('emaj','emajconfiguregroups');
 
-		$misc->printTitle($this->lang['emajassignatblseq']);
+		$misc->printTitle($this->lang['emajassigntblseq']);
 
 		// Get group names already known in emaj_group_def table
 		$knownGroups = $this->emajdb->getKnownGroups();
@@ -2143,7 +2178,8 @@ class Emaj extends Plugin {
 			$knownTsp = $this->emajdb->getKnownTsp();
 		}
 
-		$lst = '';
+		// Build the list of tables and sequences to processs and count them
+		$lst = ''; $nbTbl = 0; $nbSeq = 0;
 		echo "<form action=\"plugin.php?plugin={$this->name}&amp;\" method=\"post\">\n";
 		echo "<input type=\"hidden\" name=\"action\" value=\"assign_tblseq_ok\" />\n";
 
@@ -2154,17 +2190,20 @@ class Emaj extends Plugin {
 				echo "<input type=\"hidden\" name=\"appschema[]\" value=\"", htmlspecialchars($a['appschema']), "\" />\n";
 				echo "<input type=\"hidden\" name=\"tblseq[]\" value=\"", htmlspecialchars($a['tblseq']), "\" />\n";
 				$lst .= "<br>- {$a['appschema']}.{$a['tblseq']}";
+				if ($a['type'] == 'r') $nbTbl++; else $nbSeq++;
 			}
-		}else{
+		} else {
 
 		// single assign
 			echo "<input type=\"hidden\" name=\"appschema\" value=\"", htmlspecialchars($_REQUEST['appschema']), "\" />\n";
 			echo "<input type=\"hidden\" name=\"tblseq\" value=\"", htmlspecialchars($_REQUEST['tblseq']), "\" />\n";
 			$lst = "{$_REQUEST['appschema']}.{$_REQUEST['tblseq']}";
+			if ($_REQUEST['type'] == 'r') $nbTbl++; else $nbSeq++;
 		}
 
 		echo "<p>", sprintf($this->lang['emajconfirmassigntblseq'], $lst), "</p>\n";
 
+		// Display the input fields depending on the context
 		echo "<table>\n";
 		echo "<tr><th class=\"data left required\" rowspan=2>{$this->lang['emajgroup']}</th>";
 		echo "<td class=\"data1\"><input id=\"groupInput\" type=\"text\" name=\"group\" value=\"\"/><span style=\"font-size: smaller; vertical-align: super;\"> (1)</span></td></tr>\n";
@@ -2176,52 +2215,82 @@ class Emaj extends Plugin {
 		echo "</select></td></tr>\n";
 		// mask-pnum class is used by jquery.filter to only accept digits
 		echo "<tr><th class=\"data left\">{$this->lang['emajenterpriority']}</th>";
-		echo "<td class=\"data1\"><input type=\"text\" name=\"priority\" size=9 maxlength=9 value=\"\" class=\"mask-pnum\"/> <span style=\"font-size: smaller; vertical-align: super;\"> (2)</span></td></tr>\n";
+		echo "<td class=\"data1\"><input type=\"text\" name=\"priority\" size=9 maxlength=9 style=\"text-align: right;\" value=\"\" class=\"mask-pnum\"/> <span style=\"font-size: smaller; vertical-align: super;\"> (2)</span></td></tr>\n";
 
 		if ($this->emajdb->getNumEmajVersion() >= 10000){			// version >= 1.0.0
-			echo "<tr><th class=\"data left\" rowspan=2>{$this->lang['emajenterlogschema']}</th>";
-			echo "<td class=\"data1\"><input type=\"text\" id=\"suffixInput\" name=\"suffix\" value=\"\"/><span style=\"font-size: smaller; vertical-align: super;\"> (3)</span></td></tr>\n";
-			echo "<tr><td><select id=\"suffixList\" name=\"suffix1\">\n";
-			echo "\t\t<option value=\"new_log_schema_suffix\">{$this->lang['emajnewsuffix']}</option>\n";
-			if ($knownSuffix->recordCount() > 0) {
-				foreach($knownSuffix as $r)
-					echo "\t\t<option value=\"{$r['known_suffix']}\">{$r['known_suffix']}</option>\n";
+			if ($nbTbl >= 1) {
+				echo "<tr><th class=\"data left\" rowspan=2>{$this->lang['emajenterlogschema']}</th>";
+				echo "<td class=\"data1\"><input type=\"text\" id=\"suffixInput\" name=\"suffix\" value=\"\"/><span style=\"font-size: smaller; vertical-align: super;\"> (3)</span></td></tr>\n";
+				echo "<tr><td><select id=\"suffixList\" name=\"suffix1\">\n";
+				echo "\t\t<option value=\"new_log_schema_suffix\">{$this->lang['emajnewsuffix']}</option>\n";
+				if ($knownSuffix->recordCount() > 0) {
+					foreach($knownSuffix as $r)
+						echo "\t\t<option value=\"{$r['known_suffix']}\">{$r['known_suffix']}</option>\n";
+				}
+				echo "\t</select></td></tr>\n";
+			} else {
+				echo "<p><input type=\"hidden\" name=\"suffix\" value=\"\" />\n";
 			}
-			echo "\t</select></td></tr>\n";
-
-			echo "<tr><th class=\"data left\" rowspan=2>{$this->lang['emajenterlogdattsp']}</th>";
-			echo "<td class=\"data1\"><input type=\"text\" id=\"logdattspInput\" name=\"logdattsp\" value=\"\"/></td></tr>\n";
-			echo "<tr><td><select id=\"logdattspList\" name=\"logdattsp1\">\n";
-			echo "\t\t<option value=\"new_log_dat_tsp\">{$this->lang['emajnewtsp']}</option>\n";
-			if ($knownTsp->recordCount() > 0) {
-				foreach($knownTsp as $r)
-					echo "\t\t<option value=\"{$r['spcname']}\">{$r['spcname']}</option>\n";
-			}
-			echo "\t</select></td></tr>\n";
-
-			echo "<tr><th class=\"data left\" rowspan=2>{$this->lang['emajenterlogidxtsp']}</th>";
-			echo "<td class=\"data1\"><input type=\"text\" id=\"logidxtspInput\" name=\"logidxtsp\" value=\"\"/></td></tr>\n";
-			echo "<tr><td><select id=\"logidxtspList\" name=\"logidxtsp1\">\n";
-			echo "\t\t<option value=\"new_log_idx_tsp\">{$this->lang['emajnewtsp']}</option>\n";
-			if ($knownTsp->recordCount() > 0) {
-				foreach($knownTsp as $r)
-					echo "\t\t<option value=\"{$r['spcname']}\">{$r['spcname']}</option>\n";
-			}
-			echo "\t</select></td></tr>\n";
-
-		}else{
+		} else {
 			echo "<p><input type=\"hidden\" name=\"suffix\" value=\"\" />\n";
+		}
+
+		if ($this->emajdb->getNumEmajVersion() >= 10200){			// version >= 1.2.0
+			if ($nbTbl == 1) {
+				// the names prefix is accessible only for a single table assignment
+				echo "<tr><th class=\"data left\">{$this->lang['emajenternameprefix']}</th>";
+				echo "<td class=\"data1\"><input type=\"text\" id=\"nameprefixInput\" name=\"nameprefix\" value=\"\"/><span style=\"font-size: smaller; vertical-align: super;\"> (4)</span></td></tr>\n";
+			} else {
+				echo "<p><input type=\"hidden\" name=\"nameprefix\" value=\"\" />\n";
+			}
+		} else {
+			echo "<p><input type=\"hidden\" name=\"nameprefix\" value=\"\" />\n";
+		}
+
+		if ($this->emajdb->getNumEmajVersion() >= 10000){			// version >= 1.0.0
+			if ($nbTbl >= 1) {
+				echo "<tr><th class=\"data left\" rowspan=2>{$this->lang['emajenterlogdattsp']}</th>";
+				echo "<td class=\"data1\"><input type=\"text\" id=\"logdattspInput\" name=\"logdattsp\" value=\"\"/></td></tr>\n";
+				echo "<tr><td><select id=\"logdattspList\" name=\"logdattsp1\">\n";
+				echo "\t\t<option value=\"new_log_dat_tsp\">{$this->lang['emajnewtsp']}</option>\n";
+				if ($knownTsp->recordCount() > 0) {
+					foreach($knownTsp as $r)
+						echo "\t\t<option value=\"{$r['spcname']}\">{$r['spcname']}</option>\n";
+				}
+				echo "\t</select></td></tr>\n";
+	
+				echo "<tr><th class=\"data left\" rowspan=2>{$this->lang['emajenterlogidxtsp']}</th>";
+				echo "<td class=\"data1\"><input type=\"text\" id=\"logidxtspInput\" name=\"logidxtsp\" value=\"\"/></td></tr>\n";
+				echo "<tr><td><select id=\"logidxtspList\" name=\"logidxtsp1\">\n";
+				echo "\t\t<option value=\"new_log_idx_tsp\">{$this->lang['emajnewtsp']}</option>\n";
+				if ($knownTsp->recordCount() > 0) {
+					foreach($knownTsp as $r)
+						echo "\t\t<option value=\"{$r['spcname']}\">{$r['spcname']}</option>\n";
+				}
+				echo "\t</select></td></tr>\n";
+			}else{
+				echo "<p><input type=\"hidden\" name=\"logdattsp\" value=\"\" />\n";
+				echo "<p><input type=\"hidden\" name=\"logidxtsp\" value=\"\" />\n";
+			}
+		}else{
 			echo "<p><input type=\"hidden\" name=\"logdattsp\" value=\"\" />\n";
 			echo "<p><input type=\"hidden\" name=\"logidxtsp\" value=\"\" />\n";
 		};
 		echo "</table>\n";
 
-		echo $misc->form;
 		echo "<p><span style=\"font-size: smaller;\">(1) </span>{$this->lang['emajrequired']}<br><span style=\"font-size: smaller;\">(2) </span> {$this->lang['emajpriorityhelp']}";
 		if ($this->emajdb->getNumEmajVersion() >= 10000){			// version >= 1.0.0
-			echo "<br><span style=\"font-size: smaller;\">(3) </span>{$this->lang['emajlogschemahelp']}";
+			if ($nbTbl >= 1) {
+				echo "<br><span style=\"font-size: smaller;\">(3) </span>{$this->lang['emajlogschemahelp']}";
+			}
+		}
+		if ($this->emajdb->getNumEmajVersion() >= 10200){			// version >= 1.2.0
+			if ($nbTbl == 1) {
+				echo "<br><span style=\"font-size: smaller;\">(4) </span>{$this->lang['emajnameprefixhelp']}";
+			}
 		}
 		echo"</p>\n";
+		echo $misc->form;
 		echo "<p><input type=\"submit\" name=\"assigntblseq\" value=\"{$this->lang['emajassign']}\" id=\"ok\" disabled=\"disabled\" />\n";
 		echo "<input type=\"submit\" name=\"cancel\" value=\"{$lang['strcancel']}\" /></p>\n";
 		echo "</form>\n";
@@ -2263,7 +2332,7 @@ class Emaj extends Plugin {
 				for($i = 0; $i < sizeof($_POST['tblseq']); ++$i)
 				{
 					$status = $this->emajdb->assignTblSeq($_POST['appschema'][$i],$_POST['tblseq'][$i],$_POST['group'],
-												$_POST['priority'], $_POST['suffix'], $_POST['logdattsp'], $_POST['logidxtsp']);
+								$_POST['priority'], $_POST['suffix'], $_POST['nameprefix'], $_POST['logdattsp'], $_POST['logidxtsp']);
 					if ($status != 0) {
 						$data->endTransaction();
 						configure_groups('',$this->lang['emajmodifygrouperr']);
@@ -2280,12 +2349,184 @@ class Emaj extends Plugin {
 
 		// single assignement
 			$status = $this->emajdb->assignTblSeq($_POST['appschema'],$_POST['tblseq'],$_POST['group'],
-										$_POST['priority'], $_POST['suffix'], $_POST['logdattsp'], $_POST['logidxtsp']);
+								$_POST['priority'], $_POST['suffix'], $_POST['nameprefix'], $_POST['logdattsp'], $_POST['logidxtsp']);
 			if ($status == 0)
 				$this->configure_groups($this->lang['emajmodifygroupok']);
 			else
 				$this->configure_groups('',$this->lang['emajmodifygrouperr']);
 		}
+	}
+
+	/**
+	 * Prepare update a table/sequence into a group: ask for properties and confirmation
+	 */
+	function update_tblseq() {
+		global $misc, $lang;
+
+		// Test at least 1 table/sequence is to be processed
+		if (empty($_REQUEST['tblseq'])) {
+			$this->configure_groups($this->lang['emajspecifytblseqtoupdate']);
+			exit();
+		}
+		// Test the table/sequence is already assign to a group
+		if ($_REQUEST['group'] == ''){
+			$this->configure_groups('',sprintf($this->lang['emajtblseqnogroup'],$_REQUEST['appschema'],$_REQUEST['tblseq']));
+			exit();
+		}
+
+		$this->printPageHeader('emaj','emajconfiguregroups');
+
+		$misc->printTitle($this->lang['emajupdatetblseq']);
+
+		// Get group names already known in emaj_group_def table
+		$knownGroups = $this->emajdb->getKnownGroups();
+
+		// Get log schema suffix already known in emaj_group_def table
+		if ($this->emajdb->getNumEmajVersion() >= 10000){			// version >= 1.0.0
+			$knownSuffix = $this->emajdb->getKnownSuffix();
+		}
+
+		// Get tablespaces the current user can see
+		if ($this->emajdb->getNumEmajVersion() >= 10000){			// version >= 1.0.0
+			$knownTsp = $this->emajdb->getKnownTsp();
+		}
+
+		echo "<form action=\"plugin.php?plugin={$this->name}&amp;\" method=\"post\">\n";
+		echo "<input type=\"hidden\" name=\"action\" value=\"update_tblseq_ok\" />\n";
+
+		echo "<input type=\"hidden\" name=\"appschema\" value=\"", htmlspecialchars($_REQUEST['appschema']), "\" />\n";
+		echo "<input type=\"hidden\" name=\"tblseq\" value=\"", htmlspecialchars($_REQUEST['tblseq']), "\" />\n";
+
+		echo "<p>", sprintf($this->lang['emajconfirmupdatetblseq'], "{$_REQUEST['appschema']}.{$_REQUEST['tblseq']}"), "</p>\n";
+
+		// Display the input fields depending on the context
+		echo "<table>\n";
+		echo "<tr><th class=\"data left required\" rowspan=2>{$this->lang['emajgroup']}</th>";
+		echo "<td class=\"data1\"><input id=\"groupInput\" type=\"text\" name=\"group\" value=\"{$_REQUEST['group']}\"/><span style=\"font-size: smaller; vertical-align: super;\"> (1)</span></td></tr>\n";
+		echo "<tr><td><select id=\"groupList\" name=\"group1\"><option value=\"new_group\">{$this->lang['emajnewgroup']}</option>\n";
+		if ($knownGroups->recordCount() > 0) {
+			foreach($knownGroups as $r)
+				echo "<option value=\"{$r['group_name']}\">{$r['group_name']}</option>\n";
+		}
+		echo "</select></td></tr>\n";
+		// mask-pnum class is used by jquery.filter to only accept digits
+		echo "<tr><th class=\"data left\">{$this->lang['emajenterpriority']}</th>";
+		echo "<td class=\"data1\"><input type=\"text\" name=\"priority\" size=9 maxlength=9 style=\"text-align: right;\" value=\"{$_REQUEST['priority']}\" class=\"mask-pnum\"/> <span style=\"font-size: smaller; vertical-align: super;\"> (2)</span></td></tr>\n";
+
+		if ($this->emajdb->getNumEmajVersion() >= 10000){			// version >= 1.0.0
+			if ($_REQUEST['type'] == 'r') {
+				echo "<tr><th class=\"data left\" rowspan=2>{$this->lang['emajenterlogschema']}</th>";
+				echo "<td class=\"data1\"><input type=\"text\" id=\"suffixInput\" name=\"suffix\" value=\"{$_REQUEST['logschemasuffix']}\"/><span style=\"font-size: smaller; vertical-align: super;\"> (3)</span></td></tr>\n";
+				echo "<tr><td><select id=\"suffixList\" name=\"suffix1\">\n";
+				echo "\t\t<option value=\"new_log_schema_suffix\">{$this->lang['emajnewsuffix']}</option>\n";
+				if ($knownSuffix->recordCount() > 0) {
+					foreach($knownSuffix as $r)
+						echo "\t\t<option value=\"{$r['known_suffix']}\">{$r['known_suffix']}</option>\n";
+				}
+				echo "\t</select></td></tr>\n";
+			} else {
+				echo "<p><input type=\"hidden\" name=\"suffix\" value=\"\" />\n";
+			}
+		} else {
+			echo "<p><input type=\"hidden\" name=\"suffix\" value=\"\" />\n";
+		}
+
+		if ($this->emajdb->getNumEmajVersion() >= 10200){			// version >= 1.2.0
+			if ($_REQUEST['type'] == 'r') {
+				// the names prefix is accessible only for a single table assignment
+				echo "<tr><th class=\"data left\">{$this->lang['emajenternameprefix']}</th>";
+				echo "<td class=\"data1\"><input type=\"text\" id=\"nameprefixInput\" name=\"nameprefix\" value=\"{$_REQUEST['emajnamesprefix']}\"/><span style=\"font-size: smaller; vertical-align: super;\"> (4)</span></td></tr>\n";
+			} else {
+				echo "<p><input type=\"hidden\" name=\"nameprefix\" value=\"\" />\n";
+			}
+		} else {
+			echo "<p><input type=\"hidden\" name=\"nameprefix\" value=\"\" />\n";
+		}
+
+		if ($this->emajdb->getNumEmajVersion() >= 10000){			// version >= 1.0.0
+			if ($_REQUEST['type'] == 'r') {
+				echo "<tr><th class=\"data left\" rowspan=2>{$this->lang['emajenterlogdattsp']}</th>";
+				echo "<td class=\"data1\"><input type=\"text\" id=\"logdattspInput\" name=\"logdattsp\" value=\"{$_REQUEST['logdattsp']}\"/></td></tr>\n";
+				echo "<tr><td><select id=\"logdattspList\" name=\"logdattsp1\">\n";
+				echo "\t\t<option value=\"new_log_dat_tsp\">{$this->lang['emajnewtsp']}</option>\n";
+				if ($knownTsp->recordCount() > 0) {
+					foreach($knownTsp as $r)
+						echo "\t\t<option value=\"{$r['spcname']}\">{$r['spcname']}</option>\n";
+				}
+				echo "\t</select></td></tr>\n";
+	
+				echo "<tr><th class=\"data left\" rowspan=2>{$this->lang['emajenterlogidxtsp']}</th>";
+				echo "<td class=\"data1\"><input type=\"text\" id=\"logidxtspInput\" name=\"logidxtsp\" value=\"{$_REQUEST['logidxtsp']}\"/></td></tr>\n";
+				echo "<tr><td><select id=\"logidxtspList\" name=\"logidxtsp1\">\n";
+				echo "\t\t<option value=\"new_log_idx_tsp\">{$this->lang['emajnewtsp']}</option>\n";
+				if ($knownTsp->recordCount() > 0) {
+					foreach($knownTsp as $r)
+						echo "\t\t<option value=\"{$r['spcname']}\">{$r['spcname']}</option>\n";
+				}
+				echo "\t</select></td></tr>\n";
+			}else{
+				echo "<p><input type=\"hidden\" name=\"logdattsp\" value=\"\" />\n";
+				echo "<p><input type=\"hidden\" name=\"logidxtsp\" value=\"\" />\n";
+			}
+		}else{
+			echo "<p><input type=\"hidden\" name=\"logdattsp\" value=\"\" />\n";
+			echo "<p><input type=\"hidden\" name=\"logidxtsp\" value=\"\" />\n";
+		};
+		echo "</table>\n";
+
+		echo $misc->form;
+		echo "<p><span style=\"font-size: smaller;\">(1) </span>{$this->lang['emajrequired']}<br><span style=\"font-size: smaller;\">(2) </span> {$this->lang['emajpriorityhelp']}";
+		if ($this->emajdb->getNumEmajVersion() >= 10000){			// version >= 1.0.0
+			if ($_REQUEST['type'] == 'r') {
+				echo "<br><span style=\"font-size: smaller;\">(3) </span>{$this->lang['emajlogschemahelp']}";
+			}
+		}
+		if ($this->emajdb->getNumEmajVersion() >= 10200){			// version >= 1.2.0
+			if ($_REQUEST['type'] == 'r') {
+				echo "<br><span style=\"font-size: smaller;\">(4) </span>{$this->lang['emajnameprefixhelp']}";
+			}
+		}
+		echo"</p>\n";
+		echo "<p><input type=\"submit\" name=\"updatetblseq\" value=\"{$lang['strupdate']}\" id=\"ok\" />\n";
+		echo "<input type=\"submit\" name=\"cancel\" value=\"{$lang['strcancel']}\" /></p>\n";
+		echo "</form>\n";
+
+		echo "<script type=\"text/javascript\">\n";
+		// JQuery script to only enable the submit button when the group name is not empty
+		echo "  $(\"#groupInput\").keyup(function (data) {\n";
+		echo "    if ($(this).val() != \"\") { $(\"#ok\").removeAttr(\"disabled\"); }\n";
+		echo "      else { $(\"#ok\").attr(\"disabled\", \"disabled\"); }\n";
+		echo "  });\n";
+		// JQuery script to link input fields and associated list boxes
+		echo "  $(\"#groupList\").change(function () { $(\"#groupInput\").val($(\"#groupList option:selected\").text()); $(\"#ok\").removeAttr(\"disabled\");});\n";
+		echo "  $(\"#groupInput\").keyup(function () { $(\"#groupList option:first-child\").attr(\"selected\", true); });\n";
+		echo "  $(\"#suffixList\").change(function () { $(\"#suffixInput\").val($(\"#suffixList option:selected\").text()); });\n";
+		echo "  $(\"#suffixInput\").keyup(function () { $(\"#suffixList option:first-child\").attr(\"selected\", true); });\n";
+		echo "  $(\"#logdattspList\").change(function () { $(\"#logdattspInput\").val($(\"#logdattspList option:selected\").text()); });\n";
+		echo "  $(\"#logdattspInput\").keyup(function () { $(\"#logdattspList option:first-child\").attr(\"selected\", true); });\n";
+		echo "  $(\"#logidxtspList\").change(function () { $(\"#logidxtspInput\").val($(\"#logidxtspList option:selected\").text()); });\n";
+		echo "  $(\"#logidxtspInput\").keyup(function () { $(\"#logidxtspList option:first-child\").attr(\"selected\", true); });\n";
+		echo "</script>";
+
+		$this->printEmajFooter();
+		$misc->printFooter();
+	}
+
+	/**
+	 * Perform table/sequence insertion into a tables group
+	 */
+	function update_tblseq_ok() {
+		global $lang, $data;
+
+	// process the click on the <cancel> button
+		if (isset($_POST['cancel'])) {$this->configure_groups(); exit();}
+
+		$status = $this->emajdb->updateTblSeq($_POST['appschema'],$_POST['tblseq'],$_POST['group'],
+							$_POST['priority'], $_POST['suffix'], $_POST['nameprefix'], $_POST['logdattsp'], $_POST['logidxtsp']);
+		if ($status == 0)
+			$this->configure_groups($this->lang['emajmodifygroupok']);
+		else
+			$this->configure_groups('',$this->lang['emajmodifygrouperr']);
 	}
 
 	/**
@@ -2308,11 +2549,16 @@ class Emaj extends Plugin {
 					exit();
 				}
 			}
+		} else {
+			if ($_REQUEST['group'] == ''){
+				$this->configure_groups('',sprintf($this->lang['emajtblseqnogroup'],$_REQUEST['appschema'],$_REQUEST['tblseq']));
+				exit();
+			}
 		}
 
 		$this->printPageHeader('emaj','emajconfiguregroups');
 
-		$misc->printTitle($this->lang['emajremoveatblseq']);
+		$misc->printTitle($this->lang['emajremovetblseq']);
 
 		echo "<form action=\"plugin.php?plugin={$this->name}&amp;\" method=\"post\">\n";
 		echo "<p><input type=\"hidden\" name=\"action\" value=\"remove_tblseq_ok\" />\n";
@@ -2326,7 +2572,6 @@ class Emaj extends Plugin {
 				echo "<input type=\"hidden\" name=\"tblseq[]\" value=\"", htmlspecialchars($a['tblseq']), "\" />\n";
 				echo "<input type=\"hidden\" name=\"group[]\" value=\"", htmlspecialchars($a['group']), "\" />\n";
 			}
-
 		}else {
 
 		// single removal
@@ -2336,7 +2581,6 @@ class Emaj extends Plugin {
 			echo "<input type=\"hidden\" name=\"group\" value=\"", htmlspecialchars($_REQUEST['group']), "\" />\n";
 		}
 
-		echo "<input type=\"hidden\" name=\"back\" value=\"", htmlspecialchars($_REQUEST['back']), "\" />\n";
 		echo $misc->form;
 		echo "<input type=\"submit\" name=\"removetblseq\" value=\"{$this->lang['emajremove']}\" />\n";
 		echo "<input type=\"submit\" name=\"cancel\" value=\"{$lang['strcancel']}\" /></p>\n";
@@ -3277,9 +3521,8 @@ class Emaj extends Plugin {
 		echo "</p><p>";
 		echo "<input type=\"submit\" name=\"rollbackgroup\" value=\"{$this->lang['emajrlbk']}\" />\n";
 		if ($this->emajdb->getNumEmajVersion() >= 10100){	// version >= 1.1.0
-			if ($this->emajdb->isDblinkUsable()) {
-// texte bouton
-				echo "<input type=\"submit\" name=\"async\" value=\"Rollback et suivi\" />\n";
+			if ($this->emajdb->isDblinkUsable() && $this->emajdb->isAsyncRlbkUsable($this->conf) ) {
+				echo "<input type=\"submit\" name=\"async\" value=\"{$this->lang['emajrlbkthenmonitor']}\" />\n";
 			}
 		}
 		echo "<input type=\"submit\" name=\"cancel\" value=\"{$lang['strcancel']}\" /></p>\n";
@@ -3333,8 +3576,11 @@ class Emaj extends Plugin {
 			$version = array();
 			preg_match("/(\d+(?:\.\d+)?)(?:\.\d+)?.*$/", exec($psqlExe . " --version"), $version);
 			if (empty($version)) {
-// texte
-				printf($lang['emajbadpsqlpath'], $this->conf['psql_path']);
+				if ($_POST['back']=='list') {
+					$this->show_groups('',sprintf($this->lang['emajbadpsqlpath'], $this->conf['psql_path']));
+				}else{
+					$this->show_group('',sprintf($this->lang['emajbadpsqlpath'], $this->conf['psql_path']));
+				}
 				exit;
 			}
 
@@ -3343,8 +3589,11 @@ class Emaj extends Plugin {
 			$testFileName = $this->conf['temp_dir'] . $sep . 'rlbk_report_test';
 			$f = fopen($testFileName,'w');
 			if (!$f) {
-// texte
-				printf($lang['emajbadtempdir'], $this->conf['temp_dir']);
+				if ($_POST['back']=='list') {
+					$this->show_groups('',sprintf($this->lang['emajbadtempdir'], $this->conf['temp_dir']));
+				}else{
+					$this->show_group('',sprintf($this->lang['emajbadtempdir'], $this->conf['temp_dir']));
+				}
 				exit;
 			} else {
 				fclose($f);
@@ -3352,8 +3601,8 @@ class Emaj extends Plugin {
 			}
 
 			$rlbkId = $this->emajdb->asyncRollbackGroup($_POST['group'],$_POST['mark'],$_POST['rollbacktype']=='logged', $psqlExe, $this->conf['temp_dir'].$sep);
-// texte
-			$this->show_rollbacks(sprintf("Rollback started (id = %s)",$rlbkId));
+// test erreur ?
+			$this->show_rollbacks(sprintf($this->lang['emajasyncrlbkstarted'],$rlbkId));
 			exit;
 		}
 
@@ -4088,6 +4337,5 @@ class Emaj extends Plugin {
 
 			return $out;
 		}
-
 }
 ?>

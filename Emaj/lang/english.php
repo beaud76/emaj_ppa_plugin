@@ -62,17 +62,22 @@
 	$plugin_lang['emajnewtsp'] = '-- new tablespace --';
 	$plugin_lang['emajspecifytblseqtoassign'] = 'Specify at least one table or sequence to assign';
 	$plugin_lang['emajtblseqyetgroup'] = 'Error, " %s.%s " is already assigned to a tables group.';
-	$plugin_lang['emajassignatblseq'] = 'E-Maj: Assign tables / sequences to a tables group';
+	$plugin_lang['emajassigntblseq'] = 'E-Maj: Assign tables / sequences to a tables group';
 	$plugin_lang['emajconfirmassigntblseq'] = 'Assign: %s';
 	$plugin_lang['emajenterpriority'] = 'Processing priority';
-	$plugin_lang['emajpriorityhelp'] = 'Tables and sequences processed in priority ascending order';
+	$plugin_lang['emajpriorityhelp'] = 'Tables and sequences are processed in priority ascending order';
 	$plugin_lang['emajenterlogschema'] = 'Log schema suffix';
 	$plugin_lang['emajlogschemahelp'] = 'Log schema = \'emaj\' + suffix';
+	$plugin_lang['emajenternameprefix'] = 'E-Maj objects name prefix';
+	$plugin_lang['emajnameprefixhelp'] = 'Default = &lt;schema&gt;_&lt;table&gt; ; must be unique';
 	$plugin_lang['emajenterlogdattsp'] = 'Log table tablespace';
 	$plugin_lang['emajenterlogidxtsp'] = 'Log index tablespace';
+	$plugin_lang['emajspecifytblseqtoupdate'] = 'Specify at least one table or sequence to update';
+	$plugin_lang['emajupdatetblseq'] = 'E-Maj: Update properties of a table / sequence in a tables group';
+	$plugin_lang['emajconfirmupdatetblseq'] = 'Update: %s';
 	$plugin_lang['emajspecifytblseqtoremove'] = 'Specify at least one table or sequence to remove';
 	$plugin_lang['emajtblseqnogroup'] = 'Error, " %s.%s " is not currently assigned to any tables group.';
-	$plugin_lang['emajremoveatblseq'] = 'E-Maj: Remove tables / sequences from a tables group';
+	$plugin_lang['emajremovetblseq'] = 'E-Maj: Remove tables / sequences from a tables group';
 	$plugin_lang['emajconfirmremovetblseq'] = 'Are you sure you want to remove " %s.%s " from tables group "%s" ?';
 	$plugin_lang['emajmodifygroupok'] = 'The change is recorded. It will take effect when the concerned tables groups will be (re)created.';
 	$plugin_lang['emajmodifygrouperr'] = 'Error while updating tables groups content.';
@@ -106,8 +111,9 @@
 	$plugin_lang['emajcurrentduration'] = 'Current duration';
 	$plugin_lang['emajestimremaining'] = 'Estimated remaining';
 	$plugin_lang['emajpctcompleted'] = '% completed';
-	$plugin_lang['emajcompletedrlbk'] = 'Completed E-Maj rollbacks';
 	$plugin_lang['emajinprogressrlbk'] = 'In progress E-Maj rollbacks';
+	$plugin_lang['emajrlbkmonitornotavailable'] = 'In progress rollbacks monitoring is not available.';
+	$plugin_lang['emajcompletedrlbk'] = 'Completed E-Maj rollbacks';
 	$plugin_lang['emajnbtabletoprocess'] = 'Nb tables to process';
 	$plugin_lang['emajnbseqtoprocess'] = 'Nb sequences to process';
 	$plugin_lang['emajnorlbk'] = 'No E-Maj rollback.';
@@ -156,6 +162,7 @@
 	$plugin_lang['emajlogschema'] = 'Log schema';
 	$plugin_lang['emajlogdattsp'] = 'Log tablespace';
 	$plugin_lang['emajlogidxtsp'] = 'Log index tablespace';
+	$plugin_lang['emajnamesprefix'] = 'Objects name prefix';
 
 	// Group creation
 	$plugin_lang['emajcreateagroup'] = 'E-Maj: Create a tables group';
@@ -189,7 +196,6 @@
 	$plugin_lang['emajconfirmstartgroup'] = 'Start tables group "%s"';
 	$plugin_lang['emajinitmark'] = 'Initial mark';
 	$plugin_lang['emajoldlogsdeletion'] = 'Old logs deletion';
-//	$plugin_lang['emajinitmarkerr'] = 'An initial mark name must be supplied';
 	$plugin_lang['emajcantstartgroup'] = 'Tables group "%s" is already in logging state.';
 	$plugin_lang['emajstartgroupok'] = 'Tables group "%s" is started with mark "%s".';
 	$plugin_lang['emajstartgrouperr'] = 'Error during tables group "%s" start!';
@@ -227,7 +233,6 @@
 	// Set Mark for one or several groups
 	$plugin_lang['emajsetamark'] = 'E-Maj: Set a mark';
 	$plugin_lang['emajconfirmsetmarkgroup'] = 'Set a mark for tables group(s) "%s":';
-//	$plugin_lang['emajmarkerr'] = 'A mark name must be supplied';
 	$plugin_lang['emajcantsetmark'] = 'No mark can be set.';
 	$plugin_lang['emajinvalidmark'] = 'The supplied mark (%s) is invalid!';
 	$plugin_lang['emajsetmarkgroupok'] = 'The mark "%s" has been set for tables group(s) "%s".';
@@ -244,10 +249,14 @@
 	$plugin_lang['emajrlbkagroup'] = 'E-Maj: Rollback a tables group';
 	$plugin_lang['emajconfirmrlbkgroup'] = 'Rollback tables group "%s" to mark "%s"';
 	$plugin_lang['emajselectmarkgroup'] = 'Rollback tables group "%s" to mark : ';
+	$plugin_lang['emajrlbkthenmonitor'] = 'Rollback and monitor';
 	$plugin_lang['emajinvalidrlbkmark'] = 'Mark "%s" is not valid anymore.';
 	$plugin_lang['emajcantrlbkgroup'] = 'It cannot be rollbacked!';
 	$plugin_lang['emajrlbkgroupok'] = 'Tables group "%s" has been rollbacked to mark "%s".';
 	$plugin_lang['emajrlbkgrouperr'] = 'Error during tables group "%s" rollback to mark "%s"!';
+	$plugin_lang['emajbadpsqlpath'] = 'Asynchronous rollback not possible: the configured pathname of the psql command (%s) is not valid.';
+	$plugin_lang['emajbadtempdir'] = 'Asynchronous rollback not possible: the configured temporary directory (%s) is not valid.';
+	$plugin_lang['emajasyncrlbkstarted'] = 'Rollback started (id = %s).';
 
 	// Groups rollback
 	$plugin_lang['emajrlbkgroups'] = 'E-Maj: Rollback tables groups';
