@@ -9,8 +9,6 @@
 	$plugin_lang['emajnotavail'] = 'Sorry, E-Maj is not available for this database.';
 	$plugin_lang['emajtooold'] = 'Sorry, this E-Maj version (%s) is too old. The minimum version supported by this plugin is %s.';
 	$plugin_lang['emajstate'] = 'State';
-	$plugin_lang['emajgroupnotidle'] = 'The tables group is not IDLE anymore.';
-	$plugin_lang['emajgroupnotlogging'] = 'The tables group is not LOGGING anymore.';
 	$plugin_lang['emajnoselectedgroup'] = 'No tables group has been selected!';
 	$plugin_lang['emajgroup'] = 'Group';
 	$plugin_lang['emajgroups'] = 'Groups';
@@ -26,6 +24,7 @@
 	$plugin_lang['emajidle'] = 'Idle';
 	$plugin_lang['emajactive'] = 'Active';
 	$plugin_lang['emajdeleted'] = 'Deleted';
+	$plugin_lang['emajprotected'] = 'Protected against rollback';
 	$plugin_lang['emajpagebottom'] = 'Go to bottom';
 	$plugin_lang['emajlogsize'] = 'Log size';
 	$plugin_lang['emajrequired'] = 'Required';
@@ -136,6 +135,8 @@
 	$plugin_lang['emajfirstmark'] = 'First mark';
 	$plugin_lang['emajrename'] = 'Rename';
 	$plugin_lang['emajnomark'] = 'The tables group has no mark';
+	$plugin_lang['emajprotect'] = 'Protect';
+	$plugin_lang['emajunprotect'] = 'Unprotect';
 
 	// Statistics
 	$plugin_lang['emajshowstat'] = 'Statistics from E-Maj log for group "%s"';
@@ -173,14 +174,14 @@
 	// Group drop
 	$plugin_lang['emajdropagroup'] = 'E-Maj: Drop a tables group';
 	$plugin_lang['emajconfirmdropgroup'] = 'Are you sure you want to drop tables group "%s" ?';
-	$plugin_lang['emajcantdrpgroup'] = 'It cannot be dropped.';
+	$plugin_lang['emajcantdropgroup'] = 'Dropping the tables group "%s" is not possible. The group is started.';
 	$plugin_lang['emajdropgroupok'] = 'The tables group "%s" has been dropped.';
 	$plugin_lang['emajdropgrouperr'] = 'Error during tables group "%s" drop!';
 
 	// Group alter
 	$plugin_lang['emajalteragroup'] = 'E-Maj: Alter a tables group';
 	$plugin_lang['emajconfirmaltergroup'] = 'Are you sure you want to alter tables group "%s" ?';
-	$plugin_lang['emajcantaltergroup'] = 'It cannot be altered.';
+	$plugin_lang['emajcantaltergroup'] = 'Altering the tables group "%s" is not possible. The group is started.';
 	$plugin_lang['emajaltergroupok'] = 'The tables group "%s" has been altered.';
 	$plugin_lang['emajalternogroup'] = 'No detected change for the tables group "%s".';
 	$plugin_lang['emajaltergrouperr'] = 'Error during tables group "%s" alter!';
@@ -191,19 +192,27 @@
 	$plugin_lang['emajcommentgroupok'] = 'The comment for tables group "%s" has been recorded.';
 	$plugin_lang['emajcommentgrouperr'] = 'Error during comment recording for tables group "%s"!';
 
+	// Group protect
+	$plugin_lang['emajcantprotectgroup'] = 'Protecting the tables group "%s" is not possible. The group is stopped.';
+	$plugin_lang['emajprotectgroupok'] = 'The tables group "%s" is now protected against rollbacks.';
+
+	// Group unprotect
+	$plugin_lang['emajcantunprotectgroup'] = 'Unprotecting the tables group "%s" is not possible. The group is stopped.';
+	$plugin_lang['emajunprotectgroupok'] = 'The tables group "%s" is now unprotected.';
+
 	// Group start
 	$plugin_lang['emajstartagroup'] = 'E-Maj: Start a tables group';
 	$plugin_lang['emajconfirmstartgroup'] = 'Start tables group "%s"';
 	$plugin_lang['emajinitmark'] = 'Initial mark';
 	$plugin_lang['emajoldlogsdeletion'] = 'Old logs deletion';
-	$plugin_lang['emajcantstartgroup'] = 'Tables group "%s" is already in logging state.';
+	$plugin_lang['emajcantstartgroup'] = 'Starting the tables group "%s" is not possible. The group is already started.';
 	$plugin_lang['emajstartgroupok'] = 'Tables group "%s" is started with mark "%s".';
 	$plugin_lang['emajstartgrouperr'] = 'Error during tables group "%s" start!';
 
 	// Groups start
 	$plugin_lang['emajstartgroups'] = 'E-Maj: Start tables groups';
 	$plugin_lang['emajconfirmstartgroups'] = 'Start tables groups "%s"';
-	$plugin_lang['emajcantstartgroups'] = ' Can\'t start tables groups "%s". Group "%s" is already started.';
+	$plugin_lang['emajcantstartgroups'] = 'Starting the tables groups "%s" is not possible. the group "%s" is already started.';
 	$plugin_lang['emajstartgroupsok'] = 'Tables groups "%s" are started with mark "%s".';
 	$plugin_lang['emajstartgroupserr'] = 'Error during tables groups "%s" start!';
 
@@ -212,32 +221,40 @@
 	$plugin_lang['emajconfirmstopgroup'] = 'Stop tables group "%s"';
 	$plugin_lang['emajstopmark'] = 'Final mark';
 	$plugin_lang['emajforcestop'] = 'Forced stop (in case of problem only)';
-	$plugin_lang['emajcantstopgroup'] = 'Tables group "%s" is already idle.';
+	$plugin_lang['emajcantstopgroup'] = 'Stopping the tables group "%s" is not possible. The group is already stopped.';
 	$plugin_lang['emajstopgroupok'] = 'Tables group "%s" has been stopped.';
 	$plugin_lang['emajstopgrouperr'] = 'Error during tables group "%s" stop!';
 
 	// Groups stop
 	$plugin_lang['emajstopgroups'] = 'E-Maj: Stop tables groups';
 	$plugin_lang['emajconfirmstopgroups'] = 'Stop tables groups "%s"';
-	$plugin_lang['emajcantstopgroups'] = 'Can\'t stop tables groups "%s". Group "%s" is already stopped.';
+	$plugin_lang['emajcantstopgroups'] = 'Stopping the tables groups "%s" is impossible. The group "%s" is already stopped.';
 	$plugin_lang['emajstopgroupsok'] = 'Tables groups "%s" have been stopped.';
 	$plugin_lang['emajstopgroupserr'] = 'Error during tables groups "%s" stop!';
 
 	// Group reset
 	$plugin_lang['emajresetagroup'] = 'E-Maj: Reset a tables group';
 	$plugin_lang['emajconfirmresetgroup'] = 'Are you sure you want to reset tables group "%s" ?';
-	$plugin_lang['emajcantresetgroup'] = 'It cannot be reset.';
+	$plugin_lang['emajcantresetgroup'] = 'Reseting the tables group "%s" is not possible. The group is started.';
 	$plugin_lang['emajresetgroupok'] = 'Tables group "%s" has been reset.';
 	$plugin_lang['emajresetgrouperr'] = 'Error during tables group "%s" reset!';
 
 	// Set Mark for one or several groups
 	$plugin_lang['emajsetamark'] = 'E-Maj: Set a mark';
 	$plugin_lang['emajconfirmsetmarkgroup'] = 'Set a mark for tables group(s) "%s":';
-	$plugin_lang['emajcantsetmark'] = 'No mark can be set.';
+	$plugin_lang['emajcantsetmarkgroup'] = 'Setting a mark on the tables group "%s" is not possible. The group is stopped.';
 	$plugin_lang['emajinvalidmark'] = 'The supplied mark (%s) is invalid!';
 	$plugin_lang['emajsetmarkgroupok'] = 'The mark "%s" has been set for tables group(s) "%s".';
 	$plugin_lang['emajsetmarkgrouperr'] = 'Error during mark set "%s" for tables group(s) "%s"!';
-	$plugin_lang['emajcantsetmarkgroups'] = 'Can\'t set a mark for tables groups "%s". Group "%s" is stopped.';
+	$plugin_lang['emajcantsetmarkgroups'] = 'Setting a mark for tables groups "%s" is not possible. The group "%s" is stopped.';
+
+	// Protect mark
+	$plugin_lang['emajcantprotectmarkgroup'] = 'Protecting a mark on the tables group "%s" is not possible. The group is stopped.';
+	$plugin_lang['emajprotectmarkgroupok'] = 'The mark "%s" for tables group "%s" is now protected against rollbacks.';
+
+	// Unprotect mark
+	$plugin_lang['emajcantunprotectmarkgroup'] = 'Unprotecting a mark on the tables group "%s" is not possible. The group is stopped.';
+	$plugin_lang['emajunprotectmarkgroupok'] = 'The mark "%s" for tables group "%s" is now unprotected.';
 
 	// Comment mark
 	$plugin_lang['emajcommentamark'] = 'E-Maj: Record a comment for a mark';
@@ -250,8 +267,11 @@
 	$plugin_lang['emajconfirmrlbkgroup'] = 'Rollback tables group "%s" to mark "%s"';
 	$plugin_lang['emajselectmarkgroup'] = 'Rollback tables group "%s" to mark : ';
 	$plugin_lang['emajrlbkthenmonitor'] = 'Rollback and monitor';
+	$plugin_lang['emajcantrlbkidlegroup'] = 'Rollbacking the tables group "%s" is not possible. The group is stopped.';
+	$plugin_lang['emajcantrlbkprotgroup'] = 'Rollbacking the tables group "%s" is not possible. The group is protected.';
+	$plugin_lang['emajcantrlbkinvalidmarkgroup'] = 'Rollbacking the tables group "%s" is not possible. The mark "%s" is not valid.';
+	$plugin_lang['emajgroupisprotected'] = 'The group "%s" is protected.';
 	$plugin_lang['emajinvalidrlbkmark'] = 'Mark "%s" is not valid anymore.';
-	$plugin_lang['emajcantrlbkgroup'] = 'It cannot be rollbacked!';
 	$plugin_lang['emajrlbkgroupok'] = 'Tables group "%s" has been rollbacked to mark "%s".';
 	$plugin_lang['emajrlbkgrouperr'] = 'Error during tables group "%s" rollback to mark "%s"!';
 	$plugin_lang['emajbadpsqlpath'] = 'Asynchronous rollback not possible: the configured pathname of the psql command (%s) is not valid.';
@@ -261,8 +281,10 @@
 	// Groups rollback
 	$plugin_lang['emajrlbkgroups'] = 'E-Maj: Rollback tables groups';
 	$plugin_lang['emajselectmarkgroups'] = 'Rollback tables groups "%s" to mark : ';
+	$plugin_lang['emajcantrlbkidlegroups'] = 'Rollbacking the tables groups "%s" is not possible. The group "%s" is stopped.';
+	$plugin_lang['emajcantrlbkprotgroups'] = 'Rollbacking the tables groups "%s" is not possible. The groups "%s" are protected.';
 	$plugin_lang['emajnomarkgroups'] = 'No common mark for tables groups "%s" can be used for a rollback.';
-	$plugin_lang['emajcantrlbkgroups'] = 'Rollback tables groups "%s" is impossible. Group "%s" is IDLE.';
+	$plugin_lang['emajcantrlbkinvalidmarkgroups'] = 'Rollbacking the tables groups "%s" is not possible. The mark "%s" is not valid.';
 	$plugin_lang['emajrlbkgroupsok'] = 'Tables groups "%s" have been rollbacked to mark "%s".';
 	$plugin_lang['emajrlbkgroupserr'] = 'Error during tables groups "%s" rollback to mark "%s"!';
 
@@ -276,7 +298,6 @@
 	// Mark deletion
 	$plugin_lang['emajdelamark'] = 'E-Maj: Delete a mark';
 	$plugin_lang['emajconfirmdelmark'] = 'Are you sure you want to delete the mark "%s" for tables group "%s" ?';
-	$plugin_lang['emajcantdelmark'] = 'The mark cannot be deleted!';
 	$plugin_lang['emajdelmarkok'] = 'Mark "%s" has been deleted for tables group "%s".';
 	$plugin_lang['emajdelmarkerr'] = 'Error during mark "%s" deletion for tables group "%s"!';
 

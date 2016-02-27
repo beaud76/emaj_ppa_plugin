@@ -116,8 +116,7 @@ class EmajDb {
 	}
 
 	/**
-	 * Determines whether or not the a dblink connection can be used for rollbacks.
-	 * It opens a test connection, using the _dblink_open_cnx() function, get the return code and finaly closes it.
+	 * Determines whether or not a dblink connection can be used for rollbacks (not necessarily for this user).
 	 */
 	function isDblinkUsable() {
 		// Access cache
@@ -125,59 +124,74 @@ class EmajDb {
 
 		global $data;
 
-		// if the _dblink_open_cnx() function is available for the user, 
-		//   open a dblink connection and analyse the result
-		$sql = "SELECT CASE 
-					WHEN pg_catalog.has_function_privilege('\"{$this->emaj_schema}\"._dblink_open_cnx(text)', 'EXECUTE')
-						AND \"{$this->emaj_schema}\"._dblink_open_cnx('test') >= 0 THEN 1 
-					ELSE 0 END as cnx_ok";
+		// It checks that 
+		// - dblink is installed into the database by testing the existence of the dblink_connect_u function
+		// - the dblink_user_password E-Maj parameter has been configured
+		$sql = "SELECT CASE WHEN 
+                       EXISTS(SELECT 1 FROM pg_catalog.pg_proc WHERE proname = 'dblink_connect_u')
+                   AND EXISTS(SELECT 1 FROM emaj.emaj_visible_param WHERE param_key = 'dblink_user_password')
+                                 THEN 1 ELSE 0 END as cnx_ok";
 		$this->dblink_usable = $data->selectField($sql,'cnx_ok');
-
-		// close the test connection if open
-		if ($this->dblink_usable) {
-			$sql = "SELECT \"{$this->emaj_schema}\"._dblink_close_cnx('test')";
-			$data->execute($sql);
-		}
 
 		return $this->dblink_usable;
 	}
 
 	/**
-	 * Determines whether or not the asynchronous rollback can be used by the plugin.
-	 * It checks the psql_path and temp_dir parameters from the plugin configuration file
+	 * Determines whether or not the asynchronous rollback can be used by the plugin for the current user.
+	 * It checks that:
+	 * - dblink is effectively usable
+	 * - the psql_path and temp_dir parameters from the plugin configuration file are set and usable
 	 * If they are set, one tries to use them.
 	 */
 	function isAsyncRlbkUsable($conf) {
 		// Access cache
 		if ($this->asyncRlbkUsable !== null) return $this->asyncRlbkUsable;
 
-		global $misc;
+		global $misc, $data;
 
 		$this->asyncRlbkUsable = 0;
 
-		// check if the parameters are set
-		if (isset($conf['psql_path']) && isset($conf['temp_dir'])) {
+		// check dblink is usable
+		if ($this->isDblinkUsable()) {
+			// if the _dblink_open_cnx() function is available for the user, 
+			//   open a dblink connection and analyse the result
+			$sql = "SELECT CASE 
+						WHEN pg_catalog.has_function_privilege('\"{$this->emaj_schema}\"._dblink_open_cnx(text)', 'EXECUTE')
+							AND \"{$this->emaj_schema}\"._dblink_open_cnx('test') >= 0 THEN 1 
+						ELSE 0 END as cnx_ok";
+			if ($data->selectField($sql,'cnx_ok')) {
+				// one can effectively use a dblink connection
 
-		// check the psql exe path supplied in the config file, by executing a simple "psql --version" command
-			$psqlExe = $misc->escapeShellCmd($conf['psql_path']);
-			$version = array();
-			preg_match("/(\d+(?:\.\d+)?)(?:\.\d+)?.*$/", exec($psqlExe . " --version"), $version);
-			if (!empty($version)) {
+				// close the test connection
+				$sql = "SELECT \"{$this->emaj_schema}\"._dblink_close_cnx('test')";
+				$data->execute($sql);
 
-		// ok, check a file can be written into the temp directory supplied in the config file 
-				$sep = (substr(php_uname(), 0, 3) == "Win") ? '\\' : '/';
-				$testFileName = $conf['temp_dir'] . $sep . 'rlbk_report_test';
-				$f = fopen($testFileName,'w');
-				if ($f) {
-					fclose($f);
-					unlink($testFileName);
+				// check if the plugin parameters are set
+				if (isset($conf['psql_path']) && isset($conf['temp_dir'])) {
+		
+					// check the psql exe path supplied in the config file, 
+					// by executing a simple "psql --version" command
+					$psqlExe = $misc->escapeShellCmd($conf['psql_path']);
+					$version = array();
+					preg_match("/(\d+(?:\.\d+)?)(?:\.\d+)?.*$/", exec($psqlExe . " --version"), $version);
+					if (!empty($version)) {
 
-		// it's OK
-					$this->asyncRlbkUsable = 1;
+						// ok, check a file can be written into the temp directory supplied in the config file 
+						$sep = (substr(php_uname(), 0, 3) == "Win") ? '\\' : '/';
+						$testFileName = $conf['temp_dir'] . $sep . 'rlbk_report_test';
+						$f = fopen($testFileName,'w');
+						if ($f) {
+
+							fclose($f);
+							unlink($testFileName);
+		
+							// it's OK
+							$this->asyncRlbkUsable = 1;
+						}
+					}
 				}
 			}
 		}
-
 		return $this->asyncRlbkUsable;
 	}
 
@@ -347,8 +361,17 @@ class EmajDb {
 		global $data;
 
 		$sql = "SELECT group_name, group_nb_table, group_nb_sequence,
-				 CASE WHEN group_is_rollbackable THEN 'ROLLBACKABLE' ELSE 'AUDIT_ONLY' END 
-					as group_type, 
+				 CASE WHEN group_is_rollbackable THEN 'ROLLBACKABLE' ELSE 'AUDIT_ONLY' END as group_type, ";
+		if ($this->getNumEmajVersion() >= 10300){	// version >= 1.3.0
+			$sql .=	"
+					CASE WHEN NOT group_is_rollbackable THEN 'AUDIT_ONLY'
+						 WHEN group_is_rollbackable AND NOT group_is_rlbk_protected THEN 'ROLLBACKABLE' 
+						 ELSE 'ROLLBACKABLE-PROTECTED' END as group_type, ";
+		}else{
+			$sql .=	"
+					CASE WHEN group_is_rollbackable THEN 'ROLLBACKABLE' ELSE 'AUDIT_ONLY' END as group_type, ";
+		}
+		$sql .=	"
 				 CASE WHEN length(group_comment) > 100 THEN substr(group_comment,1,97) || '...' ELSE group_comment END 
 					as abbr_comment, 
 				 to_char(group_creation_datetime,'DD/MM/YYYY HH24:MI:SS') as creation_datetime,
@@ -386,15 +409,24 @@ class EmajDb {
 
 		$data->clean($group);
 
-		$sql = "SELECT group_name, group_nb_table, group_nb_sequence, group_creation_datetime";
+		$sql = "SELECT group_name, group_nb_table, group_nb_sequence, group_creation_datetime, ";
 		if ($this->getNumEmajVersion() >= 10100){	// version >= 1.1.0
-			$sql .=	", CASE WHEN group_is_logging THEN 'LOGGING' ELSE 'IDLE' END as group_state";
+			$sql .=	"CASE WHEN group_is_logging THEN 'LOGGING' ELSE 'IDLE' END as group_state, ";
 		}else{
-			$sql .=	", group_state";
+			$sql .=	"group_state, ";
 		}
-		$sql .=	", CASE WHEN group_is_rollbackable THEN 'ROLLBACKABLE' ELSE 'AUDIT_ONLY' END as group_type
-				, group_comment 
-				, pg_size_pretty((SELECT sum(pg_total_relation_size('";
+		if ($this->getNumEmajVersion() >= 10300){	// version >= 1.3.0
+			$sql .=	"
+					CASE WHEN NOT group_is_rollbackable THEN 'AUDIT_ONLY'
+						 WHEN group_is_rollbackable AND NOT group_is_rlbk_protected THEN 'ROLLBACKABLE' 
+						 ELSE 'ROLLBACKABLE-PROTECTED' END as group_type, ";
+		}else{
+			$sql .=	"
+					CASE WHEN group_is_rollbackable THEN 'ROLLBACKABLE' ELSE 'AUDIT_ONLY' END as group_type, ";
+		}
+		$sql .=	"
+				group_comment, 
+				pg_size_pretty((SELECT sum(pg_total_relation_size('";
 		if ($this->getNumEmajVersion() >= 10000){	// version >= 1.0.0
 			$sql .=	"\"' || rel_log_schema || '\"";
 		}else{
@@ -426,6 +458,21 @@ class EmajDb {
 	}
 
 	/**
+	 * Gets isProtected properties of one emaj_group (1 if protected, 0 if unprotected)
+	 */
+	function isGroupProtected($group) {
+		global $data;
+
+		$data->clean($group);
+
+		$sql = "SELECT CASE WHEN group_is_rlbk_protected THEN 1 ELSE 0 END AS is_protected
+				FROM \"{$this->emaj_schema}\".emaj_group
+				WHERE group_name = '{$group}'";
+
+		return $data->selectField($sql,'is_protected');
+	}
+
+	/**
 	 * Gets all marks related to a group
 	 */
 	function getMarks($group) {
@@ -434,7 +481,11 @@ class EmajDb {
 		$data->clean($group);
 
 		$sql = "SELECT mark_group, mark_name, mark_datetime, mark_comment, ";
-		if ($this->getNumEmajVersion() >= 10100){	// version >= 1.1.0
+		if ($this->getNumEmajVersion() >= 10300){	// version >= 1.3.0
+			$sql .= "CASE WHEN mark_is_deleted THEN 'DELETED' 
+						  WHEN NOT mark_is_deleted AND mark_is_rlbk_protected THEN 'ACTIVE-PROTECTED'
+						  ELSE 'ACTIVE' END as mark_state, ";
+		}elseif ($this->getNumEmajVersion() >= 10100){	// version >= 1.1.0
 			$sql .= "CASE WHEN mark_is_deleted THEN 'DELETED' ELSE 'ACTIVE' END as mark_state, ";
 		}else{
 			$sql .= "mark_state, ";
@@ -443,15 +494,7 @@ class EmajDb {
 				"coalesce(mark_log_rows_before_next,
 					(SELECT SUM(stat_rows) 
 						FROM \"{$this->emaj_schema}\".emaj_log_stat_group(emaj_mark.mark_group,emaj_mark.mark_name,NULL)))
-				 AS mark_logrows, 0 AS mark_cumlogrows,
-				coalesce((SELECT count(*) FROM \"{$this->emaj_schema}\".emaj_mark 
-				WHERE mark_group = '{$group}' AND ";
-		if ($this->getNumEmajVersion() >= 10100){	// version >= 1.1.0
-			$sql .= "NOT mark_is_deleted";
-		}else{
-			$sql .= "mark_state = 'ACTIVE'";
-		}
-		$sql .= "),0) AS nb_active_marks_in_group
+				 AS mark_logrows, 0 AS mark_cumlogrows
 				FROM \"{$this->emaj_schema}\".emaj_mark
 				WHERE mark_group = '{$group}' 
 				ORDER BY mark_id DESC";
@@ -893,12 +936,12 @@ class EmajDb {
 		global $data;
 
 		$data->clean($groups);
-		$groups="ARRAY['".str_replace(', ',"','",$groups)."']";
+		$groupsArray="ARRAY['".str_replace(', ',"','",$groups)."']";
 		$data->clean($mark);
 
 		$sql = "SELECT CASE WHEN 
 				(SELECT COUNT(*) FROM \"{$this->emaj_schema}\".emaj_mark 
-				   WHERE mark_group = ANY ({$groups}) AND mark_name = '{$mark}')
+				   WHERE mark_group = ANY ({$groupsArray}) AND mark_name = '{$mark}')
 				= 0 THEN 1 ELSE 0 END AS result";
 
 		return $data->selectField($sql,'result');
@@ -929,8 +972,8 @@ class EmajDb {
 		$data->clean($group);
 		$data->clean($mark);
 
-		$sql = "SELECT CASE WHEN mark_datetime = 
-						(SELECT MIN (mark_datetime) FROM \"{$this->emaj_schema}\".emaj_mark WHERE mark_group = '{$group}')
+		$sql = "SELECT CASE WHEN mark_id = 
+						(SELECT MIN (mark_id) FROM \"{$this->emaj_schema}\".emaj_mark WHERE mark_group = '{$group}')
 						THEN 1 ELSE 0 END AS result
 				FROM \"{$this->emaj_schema}\".emaj_mark
 				WHERE mark_group = '{$group}' AND mark_name = '{$mark}'";
@@ -963,13 +1006,13 @@ class EmajDb {
 		global $data;
 
 		$data->clean($groups);
-		$groups="ARRAY['".str_replace(', ',"','",$groups)."']";
+		$groupsArray="ARRAY['".str_replace(', ',"','",$groups)."']";
 		$data->clean($mark);
 
 		if ($resetLog){
-			$sql = "SELECT \"{$this->emaj_schema}\".emaj_start_groups({$groups},'{$mark}') AS nbtblseq";
+			$sql = "SELECT \"{$this->emaj_schema}\".emaj_start_groups({$groupsArray},'{$mark}') AS nbtblseq";
 		}else{
-			$sql = "SELECT \"{$this->emaj_schema}\".emaj_start_groups({$groups},'{$mark}',false) AS nbtblseq";
+			$sql = "SELECT \"{$this->emaj_schema}\".emaj_start_groups({$groupsArray},'{$mark}',false) AS nbtblseq";
 		}
 
 		return $data->selectField($sql,'nbtblseq');
@@ -1004,13 +1047,13 @@ class EmajDb {
 		global $data;
 
 		$data->clean($groups);
-		$groups="ARRAY['".str_replace(', ',"','",$groups)."']";
+		$groupsArray="ARRAY['".str_replace(', ',"','",$groups)."']";
 		$data->clean($mark);
 		
 		if ($mark == ""){
-			$sql = "SELECT \"{$this->emaj_schema}\".emaj_stop_groups({$groups}) AS nbtblseq";
+			$sql = "SELECT \"{$this->emaj_schema}\".emaj_stop_groups({$groupsArray}) AS nbtblseq";
 		}else{
-			$sql = "SELECT \"{$this->emaj_schema}\".emaj_stop_groups({$groups},'{$mark}') AS nbtblseq";
+			$sql = "SELECT \"{$this->emaj_schema}\".emaj_stop_groups({$groupsArray},'{$mark}') AS nbtblseq";
 		}
 
 		return $data->selectField($sql,'nbtblseq');
@@ -1027,6 +1070,32 @@ class EmajDb {
 		$sql = "SELECT \"{$this->emaj_schema}\".emaj_reset_group('{$group}') AS nbtblseq";
 
 		return $data->selectField($sql,'nbtblseq');
+	}
+
+	/**
+	 * Protects a group
+	 */
+	function protectGroup($group) {
+		global $data;
+
+		$data->clean($group);
+
+		$sql = "SELECT \"{$this->emaj_schema}\".emaj_protect_group('{$group}') AS status";
+
+		return $data->selectField($sql,'status');
+	}
+
+	/**
+	 * Unprotects a group
+	 */
+	function unprotectGroup($group) {
+		global $data;
+
+		$data->clean($group);
+
+		$sql = "SELECT \"{$this->emaj_schema}\".emaj_unprotect_group('{$group}') AS status";
+
+		return $data->selectField($sql,'status');
 	}
 
 	/**
@@ -1050,10 +1119,10 @@ class EmajDb {
 		global $data;
 
 		$data->clean($groups);
-		$groups="ARRAY['".str_replace(', ',"','",$groups)."']";
+		$groupsArray="ARRAY['".str_replace(', ',"','",$groups)."']";
 		$data->clean($mark);
 
-		$sql = "SELECT \"{$this->emaj_schema}\".emaj_set_mark_groups({$groups},'{$mark}') AS nbtblseq";
+		$sql = "SELECT \"{$this->emaj_schema}\".emaj_set_mark_groups({$groupsArray},'{$mark}') AS nbtblseq";
 
 		return $data->execute($sql);
 	}
@@ -1087,6 +1156,34 @@ class EmajDb {
 		$sql = "SELECT \"{$this->emaj_schema}\".emaj_comment_mark_group('{$group}','{$mark}','{$comment}')";
 
 		return $data->execute($sql);
+	}
+
+	/**
+	 * Protects a mark for a group
+	 */
+	function protectMarkGroup($group,$mark) {
+		global $data;
+
+		$data->clean($group);
+		$data->clean($mark);
+
+		$sql = "SELECT \"{$this->emaj_schema}\".emaj_protect_mark_group('{$group}','{$mark}') AS status";
+
+		return $data->selectField($sql,'status');
+	}
+
+	/**
+	 * Unprotects a mark for a group
+	 */
+	function unprotectMarkGroup($group,$mark) {
+		global $data;
+
+		$data->clean($group);
+		$data->clean($mark);
+
+		$sql = "SELECT \"{$this->emaj_schema}\".emaj_unprotect_mark_group('{$group}','{$mark}') AS status";
+
+		return $data->selectField($sql,'status');
 	}
 
 	/**
@@ -1141,7 +1238,13 @@ class EmajDb {
 
 		$data->clean($group);
 
-		$sql = "SELECT mark_name, mark_datetime FROM \"{$this->emaj_schema}\".emaj_mark 
+		$sql = "SELECT mark_name, mark_datetime, ";
+		if ($this->getNumEmajVersion() >= 10300){	// version >= 1.3.0
+			$sql .= "mark_is_rlbk_protected";
+		}else{
+			$sql .= "'f' AS mark_is_rlbk_protected";
+		}
+		$sql .= " FROM \"{$this->emaj_schema}\".emaj_mark 
 				WHERE ";
 		if ($this->getNumEmajVersion() >= 10100){	// version >= 1.1.0
 			$sql .= "NOT mark_is_deleted";
@@ -1149,14 +1252,17 @@ class EmajDb {
 			$sql .= "mark_state = 'ACTIVE'";
 		}
 		$sql .= " AND mark_group = '$group'
-				ORDER BY mark_datetime DESC";
+				ORDER BY mark_id DESC";
 
 		return $data->selectSet($sql);
 	}
 
 	/**
 	 * Determines whether or not a mark name is valid as a mark to rollback to for a group
-	 * Returns 1 if the mark name is known and in ACTIVE state, 0 otherwise.
+	 * Returns 1 if:
+	 *   - the mark name is known and in ACTIVE state and 
+	 *   - no intermediate protected mark would be covered by the rollback, 
+	 * Retuns 0 otherwise.
 	 */
 	function isRollbackMarkValidGroup($group,$mark) {
 
@@ -1165,16 +1271,33 @@ class EmajDb {
 		$data->clean($group);
 		$data->clean($mark);
 
-		$sql = "SELECT CASE WHEN 
-				(SELECT COUNT(*) FROM \"{$this->emaj_schema}\".emaj_mark WHERE mark_group = '{$group}' AND mark_name = '{$mark}' AND ";
+		// check the mark is active (i.e. not deleted)
+		$sql = "SELECT CASE WHEN EXISTS
+				 (SELECT 0 FROM \"{$this->emaj_schema}\".emaj_mark 
+                   WHERE mark_group = '{$group}' AND mark_name = '{$mark}' AND ";
 		if ($this->getNumEmajVersion() >= 10100){	// version >= 1.1.0
 			$sql .= "NOT mark_is_deleted";
 		}else{
 			$sql .= "mark_state = 'ACTIVE'";
 		}
-		$sql .= ") = 1 THEN 1 ELSE 0 END AS result";
+		$sql .= ") THEN 1 ELSE 0 END AS result";
+		$result = $data->selectField($sql,'result');
 
-		return $data->selectField($sql,'result');
+		if ($result == 1) {
+			// the mark is active, so now check there is no intermediate protected mark
+			if ($this->getNumEmajVersion() >= 10300){	// version >= 1.3.0
+				$sql = "SELECT CASE WHEN 
+						(SELECT count(*) FROM \"{$this->emaj_schema}\".emaj_mark 
+						  WHERE mark_group = '{$group}' AND mark_id > 
+							(SELECT mark_id FROM \"{$this->emaj_schema}\".emaj_mark 
+							 WHERE mark_group = '{$group}' AND mark_name = '{$mark}'
+						    ) AND mark_is_rlbk_protected
+						) = 0 THEN 1 ELSE 0 END AS result";
+				$result = $data->selectField($sql,'result');
+			}
+		}
+
+		return $result;
 	}
 
 	/**
@@ -1196,19 +1319,21 @@ class EmajDb {
 	}
 
 	/**
-	 * rollbacks asynchronously a group to a mark, using a single session
+	 * rollbacks asynchronously one or several groups to a mark, using a single session
 	 */
-	function asyncRollbackGroup($group,$mark,$isLogged,$psqlExe,$tempDir) {
+	function asyncRollbackGroups($groups,$mark,$isLogged,$psqlExe,$tempDir) {
 		global $data, $misc;
 
-		$data->clean($group);
+		$data->clean($groups);
 		$data->clean($mark);
 		$data->clean($psqlExe);
 		$data->clean($tempDir);
 
+		$groupsArray="ARRAY['".str_replace(', ',"','",$groups)."']";
+
 		// Initialize the rollback operation and get its rollback id
 		$isL = $isLogged ? 'true' : 'false';
-		$sql = "SELECT \"{$this->emaj_schema}\"._rlbk_init(array['{$group}'], '{$mark}', {$isL}, 1, false) as rlbk_id";
+		$sql = "SELECT \"{$this->emaj_schema}\"._rlbk_init({$groupsArray}, '{$mark}', {$isL}, 1, false) as rlbk_id";
 		$rlbkId = $data->selectField($sql,'rlbk_id');
 
 		// Build the psql report file name, the SQL command and submit the rollback execution asynchronously
@@ -1256,11 +1381,17 @@ class EmajDb {
 		global $data;
 
 		$data->clean($groups);
-		$groups="ARRAY['".str_replace(', ',"','",$groups)."']";
+		$groupsArray="ARRAY['".str_replace(', ',"','",$groups)."']";
 
 // Attention, this statement needs postgres 8.4+, because of array_agg() function use
-		$sql = "SELECT t.mark_name, t.mark_datetime 
-				FROM (SELECT mark_name, mark_datetime, array_agg (mark_group) AS groups 
+		$sql = "SELECT t.mark_name, t.mark_datetime, t.mark_is_rlbk_protected 
+				FROM (SELECT mark_name, mark_datetime, ";
+		if ($this->getNumEmajVersion() >= 10300){	// version >= 1.3.0
+			$sql .= "        mark_is_rlbk_protected, ";
+		}else{
+			$sql .= "        'f' AS mark_is_rlbk_protected, ";
+		}
+		$sql .= "            array_agg (mark_group) AS groups 
 					FROM \"{$this->emaj_schema}\".emaj_mark,\"{$this->emaj_schema}\".emaj_group 
 					WHERE mark_group = group_name AND ";
 		if ($this->getNumEmajVersion() >= 10100){	// version >= 1.1.0
@@ -1268,30 +1399,74 @@ class EmajDb {
 		}else{
 			$sql .= "mark_state = 'ACTIVE'";
 		}
-		$sql .= " AND group_is_rollbackable GROUP BY 1,2) AS t 
-				WHERE t.groups @> $groups
-				ORDER BY mark_datetime DESC";
+		$sql .= " AND group_is_rollbackable GROUP BY 1,2,3) AS t 
+				WHERE t.groups @> $groupsArray
+				ORDER BY t.mark_datetime DESC";
 
 		return $data->selectSet($sql);
 	}
 
 	/**
+	 * Get timestamp of the youngest protected mark of a groups list.
+	 * The function is only called when E-Maj version >= 1.3.0
+	 */
+	function getYoungestProtectedMarkTimestamp($groups) {
+
+		global $data;
+
+		$data->clean($groups);
+		$groups="'".str_replace(', ',"','",$groups)."'";
+
+		$sql = "SELECT max(mark_datetime) AS youngest_mark_datetime 
+				  FROM \"{$this->emaj_schema}\".emaj_mark 
+				  WHERE mark_group IN ($groups) AND mark_is_rlbk_protected";
+
+		return $data->selectField($sql,'youngest_mark_datetime');
+	}
+
+	/**
+	 * Get the list of protected groups from a groups list.
+	 */
+	function getProtectedGroups($groups) {
+
+		global $data;
+
+		if ($this->getNumEmajVersion() < 10300){	// version < 1.3.0
+			return '';
+		}
+
+		$data->clean($groups);
+		$groups="'".str_replace(', ',"','",$groups)."'";
+
+// Attention, this statement needs postgres 8.4+, because of array_agg() function use
+		$sql = "SELECT string_agg(group_name, ', ') AS groups 
+				  FROM \"{$this->emaj_schema}\".emaj_group 
+				  WHERE group_name IN ($groups) AND group_is_rlbk_protected";
+
+		return $data->selectField($sql,'groups');
+	}
+
+	/**
 	 * Determines whether or not a mark name is valid as a mark to rollback to for a groups array
-	 * Returns 1 if the mark name is known and in ACTIVE state and represents the same timestamp for all groups, 0 otherwise.
+	 * Returns 1 if:
+	 *   - the mark name is known and in ACTIVE state,
+	 *   - no intermediate protected mark for any group would be covered by the rollback, 
+	 * Retuns 0 otherwise.
 	 */
 	function isRollbackMarkValidGroups($groups,$mark) {
 
 		global $data;
 
 		$data->clean($groups);
-		$groups="ARRAY['".str_replace(', ',"','",$groups)."']";
+		$groupsArray="ARRAY['".str_replace(', ',"','",$groups)."']";
 		$data->clean($mark);
-		$nbGroups = substr_count($groups,',') + 1;
+		$nbGroups = substr_count($groupsArray,',') + 1;
 
+		// check the mark is active (i.e. not deleted)
 		$sql = "SELECT CASE WHEN 
 				(SELECT COUNT(*) FROM \"{$this->emaj_schema}\".emaj_mark, \"{$this->emaj_schema}\".emaj_group 
 					WHERE mark_group = group_name 
-						AND mark_group = ANY ({$groups}) AND group_is_rollbackable AND mark_name = '{$mark}' 
+						AND mark_group = ANY ({$groupsArray}) AND group_is_rollbackable AND mark_name = '{$mark}' 
 						AND ";
 		if ($this->getNumEmajVersion() >= 10100){	// version >= 1.1.0
 			$sql .= "NOT mark_is_deleted";
@@ -1300,7 +1475,23 @@ class EmajDb {
 		}
 		$sql .= ") = {$nbGroups} THEN 1 ELSE 0 END AS result";
 
-		return $data->selectField($sql,'result');
+		$result = $data->selectField($sql,'result');
+
+		if ($result == 1) {
+			// the mark is active, so now check there is no intermediate protected mark
+			if ($this->getNumEmajVersion() >= 10300){	// version >= 1.3.0
+				$sql = "SELECT CASE WHEN 
+						(SELECT count(*) FROM \"{$this->emaj_schema}\".emaj_mark 
+						  WHERE mark_group = ANY ({$groupsArray}) AND mark_id > 
+							(SELECT mark_id FROM \"{$this->emaj_schema}\".emaj_mark 
+							 WHERE mark_group = ANY({$groupsArray}) AND mark_name = '{$mark}' LIMIT 1
+						    ) AND mark_is_rlbk_protected
+						) = 0 THEN 1 ELSE 0 END AS result";
+				$result = $data->selectField($sql,'result');
+			}
+		}
+
+		return $result;
 	}
 
 	/**
@@ -1310,13 +1501,13 @@ class EmajDb {
 		global $data;
 
 		$data->clean($groups);
-		$groups="ARRAY['".str_replace(', ',"','",$groups)."']";
+		$groupsArray="ARRAY['".str_replace(', ',"','",$groups)."']";
 		$data->clean($mark);
 
 		if ($isLogged){
-			$sql = "SELECT \"{$this->emaj_schema}\".emaj_logged_rollback_groups({$groups},'{$mark}') AS nbtblseq";
+			$sql = "SELECT \"{$this->emaj_schema}\".emaj_logged_rollback_groups({$groupsArray},'{$mark}') AS nbtblseq";
 		}else{
-			$sql = "SELECT\"{$this->emaj_schema}\".emaj_rollback_groups({$groups},'{$mark}') AS nbtblseq";
+			$sql = "SELECT\"{$this->emaj_schema}\".emaj_rollback_groups({$groupsArray},'{$mark}') AS nbtblseq";
 		}
 
 		return $data->selectField($sql,'nbtblseq');

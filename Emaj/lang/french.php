@@ -9,8 +9,6 @@
 	$plugin_lang['emajnotavail'] = 'Désolé, E-Maj n\'est pas disponible sur cette base de données.';
 	$plugin_lang['emajtooold'] = 'Désolé, cette version d\'E-Maj (%s) est trop ancienne. La version minimum supportée par ce plugin est %s.';
 	$plugin_lang['emajstate'] = 'Etat';
-	$plugin_lang['emajgroupnotidle'] = 'Le groupe de tables n\'est plus "arrêté".';
-	$plugin_lang['emajgroupnotlogging'] = 'Le groupe de tables n\'est plus "démarré".';
 	$plugin_lang['emajnoselectedgroup'] = 'Aucun groupe de tables n\'a été sélectionné !';
 	$plugin_lang['emajgroup'] = 'Groupe';
 	$plugin_lang['emajgroups'] = 'Groupes';
@@ -26,6 +24,7 @@
 	$plugin_lang['emajidle'] = 'Arrêté';
 	$plugin_lang['emajactive'] = 'Active';
 	$plugin_lang['emajdeleted'] = 'Supprimée';
+	$plugin_lang['emajprotected'] = 'Protégé contre les rollbacks';
 	$plugin_lang['emajpagebottom'] = 'Bas de la page';
 	$plugin_lang['emajlogsize'] = 'Taille du log';
 	$plugin_lang['emajrequired'] = 'Requis';
@@ -136,6 +135,8 @@
 	$plugin_lang['emajfirstmark'] = 'Première marque';
 	$plugin_lang['emajrename'] = 'Renommer';
 	$plugin_lang['emajnomark'] = 'Le groupe de tables n\'a pas de marque';
+	$plugin_lang['emajprotect'] = 'Protéger';
+	$plugin_lang['emajunprotect'] = 'Déprotéger';
 
 	// Statistics
 	$plugin_lang['emajshowstat'] = 'Statistiques issues du log E-Maj pour le groupe "%s"';
@@ -173,14 +174,14 @@
 	// Group drop
 	$plugin_lang['emajdropagroup'] = 'E-Maj : Supprimer un groupe de tables';
 	$plugin_lang['emajconfirmdropgroup'] = 'Etes-vous sur de vouloir supprimer le groupe de tables "%s" ?';
-	$plugin_lang['emajcantdrpgroup'] = 'Il ne peut être supprimé.';
+	$plugin_lang['emajcantdropgroup'] = 'La suppression du groupe de tables "%s" est impossible. Le groupe est démarré.';
 	$plugin_lang['emajdropgroupok'] = 'Le groupe de tables "%s" a été supprimé.';
 	$plugin_lang['emajdropgrouperr'] = 'Erreur lors de la suppression du groupe de tables "%s" !';
 
 	// Group alter
 	$plugin_lang['emajalteragroup'] = 'E-Maj : Modifier un groupe de tables';
 	$plugin_lang['emajconfirmaltergroup'] = 'êtes-vous sur de vouloir modifier le groupe de tables "%s" ?';
-	$plugin_lang['emajcantaltergroup'] = 'Il ne peut être modifié.';
+	$plugin_lang['emajcantaltergroup'] = 'La modification du groupe de tables "%s" est impossible. Le groupe est démarré.';
 	$plugin_lang['emajaltergroupok'] = 'Le groupe de tables "%s" a été modifié.';
 	$plugin_lang['emajalternogroup'] = 'Aucune modification détectée pour le groupe de table "%s".';
 	$plugin_lang['emajaltergrouperr'] = 'Erreur lors de la modification du groupe de tables "%s" !';
@@ -191,19 +192,27 @@
 	$plugin_lang['emajcommentgroupok'] = 'Le commentaire a été enregistré pour le groupe de tables "%s".';
 	$plugin_lang['emajcommentgrouperr'] = 'Erreur lors de l\'enregistrement du commentaire pour le groupe de tables "%s" !';
 
+	// Group protect
+	$plugin_lang['emajcantprotectgroup'] = 'La protection du groupe de tables "%s" est impossible. Le groupe est arrêté.';
+	$plugin_lang['emajprotectgroupok'] = 'Le groupe de tables "%s" est maintenant protégé contre les rollbacks.';
+
+	// Group unprotect
+	$plugin_lang['emajcantunprotectgroup'] = 'La déprotection du groupe de tables "%s" est impossible. Le groupe est arrêté.';
+	$plugin_lang['emajunprotectgroupok'] = 'Le groupe de tables "%s" est maintenant déprotégé.';
+
 	// Group start
 	$plugin_lang['emajstartagroup'] = 'E-Maj : Démarrer un groupe de tables';
 	$plugin_lang['emajconfirmstartgroup'] = 'Démarrer le groupe de tables "%s"';
 	$plugin_lang['emajinitmark'] = 'Marque initiale';
 	$plugin_lang['emajoldlogsdeletion'] = 'Suppression des anciens logs';
-	$plugin_lang['emajcantstartgroup'] = 'Le groupe de tables "%s" est déjà  démarré.';
+	$plugin_lang['emajcantstartgroup'] = 'Le démarrage du groupe de tables "%s" est impossible. Le groupe est déjà démarré.';
 	$plugin_lang['emajstartgroupok'] = 'Le groupe de tables "%s" est démarré avec la marque "%s".';
 	$plugin_lang['emajstartgrouperr'] = 'Erreur lors du démarrage du groupe de tables "%s" !';	
 
 	// Groups start
 	$plugin_lang['emajstartgroups'] = 'E-Maj : Démarrer des groupes de tables';
 	$plugin_lang['emajconfirmstartgroups'] = 'Démarrer les groupes de tables "%s"';
-	$plugin_lang['emajcantstartgroups'] = 'Démarrage des groupes de tables "%s" impossible. Le groupe "%s" est déjà démarré.';
+	$plugin_lang['emajcantstartgroups'] = 'Le démarrage des groupes de tables "%s" est impossible. Le groupe "%s" est déjà démarré.';
 	$plugin_lang['emajstartgroupsok'] = 'Les groupes de tables "%s" ont été démarrés avec la marque "%s".';
 	$plugin_lang['emajstartgroupserr'] = 'Erreur lors du démarrage des groupes de tables "%s" !';
 
@@ -212,32 +221,40 @@
 	$plugin_lang['emajconfirmstopgroup'] = 'Arrêter le groupe de tables "%s"';
 	$plugin_lang['emajstopmark'] = 'Marque finale';
 	$plugin_lang['emajforcestop'] = 'Forcer l\'arrêt (en cas de problème seulement)';
-	$plugin_lang['emajcantstopgroup'] = 'Le groupe de tables "%s" est déjà arrêté.';
+	$plugin_lang['emajcantstopgroup'] = 'L\'arrêt du groupe de tables "%s" est impossible. Le groupe est déjà arrêté.';
 	$plugin_lang['emajstopgroupok'] = 'Le groupe de tables "%s" a été arrêté.';
 	$plugin_lang['emajstopgrouperr'] = 'Erreur lors de l\'arrêt du groupe de tables "%s" !';
 
 	// Groups stop
 	$plugin_lang['emajstopgroups'] = 'E-Maj : Arrêter des groupes de tables';
 	$plugin_lang['emajconfirmstopgroups'] = 'Arrêter les groupes de tables "%s"';
-	$plugin_lang['emajcantstopgroups'] = 'Arrêt des groupes de tables "%s" impossible. Le groupe "%s" est déjà arrêté.';
+	$plugin_lang['emajcantstopgroups'] = 'L\'arrêt des groupes de tables "%s" est impossible. Le groupe "%s" est déjà arrêté.';
 	$plugin_lang['emajstopgroupsok'] = 'Les groupes de tables "%s" ont été arrêtés.';
 	$plugin_lang['emajstopgroupserr'] = 'Erreur lors de l\'arrêt des groupes de tables "%s" !';
 
 	// Group reset
 	$plugin_lang['emajresetagroup'] = 'E-Maj : Réinitialiser un groupe de tables';
 	$plugin_lang['emajconfirmresetgroup'] = 'êtes-vous sûr de vouloir réinitialiser le groupe de tables "%s" ?';
-	$plugin_lang['emajcantresetgroup'] = 'Le groupe de tables ne peut être réinitialisé.';
+	$plugin_lang['emajcantresetgroup'] = 'La réinitialisation du groupe de tables "%s" est impossible. Le groupe est démarré.';
 	$plugin_lang['emajresetgroupok'] = 'Le groupe de tables "%s" est réinitialisé.';
 	$plugin_lang['emajresetgrouperr'] = 'Erreur lors de la réinitialisation du groupe de tables "%s" !';
 
 	// Set Mark for one or several groups
 	$plugin_lang['emajsetamark'] = 'E-Maj : Poser une marque';
 	$plugin_lang['emajconfirmsetmarkgroup'] = 'Pose d\'une marque pour le(s) groupe(s) de tables "%s" :';
-	$plugin_lang['emajcantsetmark'] = 'Aucune marque ne peut être posée.';
+	$plugin_lang['emajcantsetmarkgroup'] = 'La pose d\'une marque pour le groupe de tables "%s" est impossible. Le groupe est arrêté.';
 	$plugin_lang['emajinvalidmark'] = 'La marque saisie (%s) est invalide.';
 	$plugin_lang['emajsetmarkgroupok'] = 'La marque "%s" est posée pour le(s) groupe(s) de tables "%s".';
 	$plugin_lang['emajsetmarkgrouperr'] = 'Erreur lors de la pose de la marque "%s" pour le(s) groupe(s) de tables "%s" !';
-	$plugin_lang['emajcantsetmarkgroups'] = 'Pose d\'une marque pour les groupes de tables "%s" impossible. Le groupe "%s" est arrêté.';
+	$plugin_lang['emajcantsetmarkgroups'] = 'La pose d\'une marque pour les groupes de tables "%s" est impossible. Le groupe "%s" est arrêté.';
+
+	// Protect mark
+	$plugin_lang['emajcantprotectmarkgroup'] = 'La protection d\'une marque pour le groupe de tables "%s" est impossible. Le groupe est arrêté.';
+	$plugin_lang['emajprotectmarkgroupok'] = 'La marque "%s" du groupe de tables "%s" est maintenant protégé contre les rollbacks.';
+
+	// Unprotect mark
+	$plugin_lang['emajcantunprotectmarkgroup'] = 'La déprotection d\'une marque pour le groupe de tables "%s" est impossible. Le groupe est arrêté.';
+	$plugin_lang['emajunprotectmarkgroupok'] = 'La marque "%s" du groupe de tables "%s" est maintenant déprotégé.';
 
 	// Comment mark
 	$plugin_lang['emajcommentamark'] = 'E-Maj : Enregistrer un commentaire pour une marque';
@@ -250,8 +267,11 @@
 	$plugin_lang['emajconfirmrlbkgroup'] = 'Rollback du groupe de tables "%s" à la marque "%s"';
 	$plugin_lang['emajselectmarkgroup'] = 'Rollback du groupe de tables "%s" à la marque : ';
 	$plugin_lang['emajrlbkthenmonitor'] = 'Rollback et suivi';
+	$plugin_lang['emajcantrlbkidlegroup'] = 'Le rollback du groupe de tables "%s" est impossible. Le groupe est arrêté.';
+	$plugin_lang['emajcantrlbkprotgroup'] = 'Le rollback du groupe de tables "%s" est impossible. Le groupe est protégé.';
+	$plugin_lang['emajcantrlbkinvalidmarkgroup'] = 'Le rollback du groupe de tables "%s" est impossible. La marque "%s" n\'est pas valide.';
+	$plugin_lang['emajgroupisprotected'] = 'Le groupe "%s" est protégé.';
 	$plugin_lang['emajinvalidrlbkmark'] = 'La marque "%s" n\'est plus valide.';
-	$plugin_lang['emajcantrlbkgroup'] = 'Le groupe de tables ne peut être rollbacké.';
 	$plugin_lang['emajrlbkgroupok'] = 'Le rollback du groupe de tables "%s" à la marque "%s" est effectué.';
 	$plugin_lang['emajrlbkgrouperr'] = 'Erreur lors du rollback du groupe de tables "%s" à la marque "%s" !';
 	$plugin_lang['emajbadpsqlpath'] = 'Rollback asynchrone impossible : le chemin de la commande psql configurée (%s) est invalide.';
@@ -261,8 +281,10 @@
 	// Groups rollback
 	$plugin_lang['emajrlbkgroups'] = 'E-Maj : Rollbacker des groupes de tables';
 	$plugin_lang['emajselectmarkgroups'] = 'Rollback des groupes de tables "%s" à la marque : ';
+	$plugin_lang['emajcantrlbkidlegroups'] = 'Le rollback des groupes de tables "%s" est impossible. Le groupe "%s" est arrêté.';
+	$plugin_lang['emajcantrlbkprotgroups'] = 'Le rollback des groupes de tables "%s" est impossible. Les groupes "%s" sont protégés.';
 	$plugin_lang['emajnomarkgroups'] = 'Aucune marque commune aux groupes de tables "%s" ne peut être utilisée pour un rollback.';
-	$plugin_lang['emajcantrlbkgroups'] = 'Rollback des groupes de tables "%s" impossible. Le groupe "%s" est arrêté.';
+	$plugin_lang['emajcantrlbkinvalidmarkgroups'] = 'Le rollback des groupes de tables "%s" est impossible. La marque "%s" n\'est pas valide.';
 	$plugin_lang['emajrlbkgroupsok'] = 'Le rollback des groupes de tables "%s" à la marque "%s" est effectué.';
 	$plugin_lang['emajrlbkgroupserr'] = 'Erreur lors du rollback des groupes de tables "%s" à la marque "%s" !';
 
@@ -276,7 +298,6 @@
 	// Mark deletion
 	$plugin_lang['emajdelamark'] = 'E-Maj : Effacer une marque';
 	$plugin_lang['emajconfirmdelmark'] = 'Etes-vous sûr de vouloir effacer la marque "%s" pour le groupe de tables "%s" ?';
-	$plugin_lang['emajcantdelmark'] = 'La marque ne peut être effacée.';
 	$plugin_lang['emajdelmarkok'] = 'La marque "%s" a été effacée pour le groupe de tables "%s".';
 	$plugin_lang['emajdelmarkerr'] = 'Erreur lors de l\'effacement de la marque "%s" pour le groupe de tables "%s" !';
 
