@@ -4421,7 +4421,7 @@ class Emaj extends Plugin {
 						if (is_string($pre_fn)) {
 							$alt_actions = $pre_fn($tabledata, $actions);
 						} else {
-							$alt_actions = $pre_fn[0]->$pre_fn[1]($tabledata, $actions);
+							$alt_actions = $pre_fn[0]->{$pre_fn[1]}($tabledata, $actions);
 						}
 					}
 					if (!isset($alt_actions)) $alt_actions =& $actions;
@@ -4610,7 +4610,7 @@ class Emaj extends Plugin {
 					if (is_string($params['function'])) {
 						$out = $params['function']($str, $params);
 					} else {
-						$out = $params['function'][0]->$params['function'][1]($str, $params);
+						$out = $params['function'][0]->{$params['function'][1]}($str, $params);
 					}
 					break;
 				case 'prettysize':
