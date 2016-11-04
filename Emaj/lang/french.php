@@ -77,7 +77,7 @@
 	$plugin_lang['emajspecifytblseqtoremove'] = 'Spécifier au moins une table ou séquence à retirer';
 	$plugin_lang['emajtblseqnogroup'] = 'Erreur, " %s.%s " n\'est actuellement affecté à aucun groupe de tables.';
 	$plugin_lang['emajremovetblseq'] = 'E-Maj : Retirer des tables / séquences d\'un groupe de tables';
-	$plugin_lang['emajconfirmremovetblseq'] = 'êtes-vous sûr de vouloir retirer " %s.%s " du groupe de tables "%s" ?';
+	$plugin_lang['emajconfirmremovetblseq'] = 'Etes-vous sûr de vouloir retirer " %s.%s " du groupe de tables "%s" ?';
 	$plugin_lang['emajmodifygroupok'] = 'La modification est enregistrée. Elle sera effective après (re)création des groupes de tables concernés.';
 	$plugin_lang['emajmodifygrouperr'] = 'Erreur lors du changement de composition des groupes de tables.';
 
@@ -121,6 +121,15 @@
 	$plugin_lang['emajfilterrlbk3'] = 'terminés depuis moins de';
 	$plugin_lang['emajfilterrlbk4'] = 'heures';
 	$plugin_lang['emajfilter'] = 'Filtrer';
+	$plugin_lang['emajconsolidablerlbk'] = 'Rollbacks E-Maj tracés consolidables';
+	$plugin_lang['emajconsolidate'] = 'Consolider';
+	$plugin_lang['emajtargetmark'] = 'Marque cible';
+	$plugin_lang['emajendrollbackmark'] = 'Marque fin de rollback';
+	$plugin_lang['emajnbintermediatemark'] = 'Nb marques intermédiaires';
+	$plugin_lang['emajconsolidaterlbk'] = 'Consolider un rollback tracé';
+	$plugin_lang['emajconfirmconsolidaterlbk'] = 'Etes-vous sûr de vouloir consolider le rollback terminé par la marque "%s" du groupe de tables "%s" ?';
+	$plugin_lang['emajconsolidaterlbkok'] = 'Le rollback terminé par la marque "%s" du groupe de tables "%s" a été consolidé.';
+	$plugin_lang['emajconsolidaterlbkerr'] = 'Erreur lors de la consolidation du rollback terminé par la marque "%s" du groupe de tables "%s" !';
 
 	// Group's properties and marks
 	$plugin_lang['emajgrouppropertiesmarks'] = 'Propriétés et marques du groupe de tables "%s"';
@@ -167,20 +176,20 @@
 
 	// Group creation
 	$plugin_lang['emajcreateagroup'] = 'E-Maj : Créer un groupe de tables';
-	$plugin_lang['emajconfirmcreategroup'] = 'Etes-vous sur de vouloir créer le groupe de tables "%s" ?';
+	$plugin_lang['emajconfirmcreategroup'] = 'Etes-vous sûr de vouloir créer le groupe de tables "%s" ?';
 	$plugin_lang['emajcreategroupok'] = 'Le groupe de tables "%s" a été créé.';
 	$plugin_lang['emajcreategrouperr'] = 'Erreur lors de la création du groupe de tables "%s" !';
 
 	// Group drop
 	$plugin_lang['emajdropagroup'] = 'E-Maj : Supprimer un groupe de tables';
-	$plugin_lang['emajconfirmdropgroup'] = 'Etes-vous sur de vouloir supprimer le groupe de tables "%s" ?';
+	$plugin_lang['emajconfirmdropgroup'] = 'Etes-vous sûr de vouloir supprimer le groupe de tables "%s" ?';
 	$plugin_lang['emajcantdropgroup'] = 'La suppression du groupe de tables "%s" est impossible. Le groupe est démarré.';
 	$plugin_lang['emajdropgroupok'] = 'Le groupe de tables "%s" a été supprimé.';
 	$plugin_lang['emajdropgrouperr'] = 'Erreur lors de la suppression du groupe de tables "%s" !';
 
 	// Group alter
 	$plugin_lang['emajalteragroup'] = 'E-Maj : Modifier un groupe de tables';
-	$plugin_lang['emajconfirmaltergroup'] = 'êtes-vous sur de vouloir modifier le groupe de tables "%s" ?';
+	$plugin_lang['emajconfirmaltergroup'] = 'Etes-vous sûr de vouloir modifier le groupe de tables "%s" ?';
 	$plugin_lang['emajcantaltergroup'] = 'La modification du groupe de tables "%s" est impossible. Le groupe est démarré.';
 	$plugin_lang['emajaltergroupok'] = 'Le groupe de tables "%s" a été modifié.';
 	$plugin_lang['emajalternogroup'] = 'Aucune modification détectée pour le groupe de table "%s".';
@@ -234,7 +243,7 @@
 
 	// Group reset
 	$plugin_lang['emajresetagroup'] = 'E-Maj : Réinitialiser un groupe de tables';
-	$plugin_lang['emajconfirmresetgroup'] = 'êtes-vous sûr de vouloir réinitialiser le groupe de tables "%s" ?';
+	$plugin_lang['emajconfirmresetgroup'] = 'Etes-vous sûr de vouloir réinitialiser le groupe de tables "%s" ?';
 	$plugin_lang['emajcantresetgroup'] = 'La réinitialisation du groupe de tables "%s" est impossible. Le groupe est démarré.';
 	$plugin_lang['emajresetgroupok'] = 'Le groupe de tables "%s" est réinitialisé.';
 	$plugin_lang['emajresetgrouperr'] = 'Erreur lors de la réinitialisation du groupe de tables "%s" !';

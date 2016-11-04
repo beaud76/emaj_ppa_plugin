@@ -1695,6 +1695,39 @@ class EmajDb {
 	}
 
 	/**
+	 * Gets the list of consolidable rollbacks (masking already consolidated rollbacks,i.e. with no intermediate mark and log)
+	 */
+	function getConsolidableRlbk() {
+		global $data;
+
+		$sql = "SELECT cons_group, cons_target_rlbk_mark_name, tt.time_tx_timestamp AS cons_target_rlbk_mark_datetime, 
+					cons_end_rlbk_mark_name, rt.time_tx_timestamp AS cons_end_rlbk_mark_datetime, cons_rows, cons_marks
+				FROM emaj.emaj_get_consolidable_rollbacks(),
+					 emaj.emaj_mark tm, emaj.emaj_time_stamp tt, 
+					 emaj.emaj_mark rm, emaj.emaj_time_stamp rt
+				WHERE tt.time_id = tm.mark_time_id AND tm.mark_id = cons_target_rlbk_mark_id
+				  AND rt.time_id = rm.mark_time_id AND rm.mark_id = cons_end_rlbk_mark_id
+				  AND (cons_rows > 0 OR cons_marks > 0)
+				ORDER BY cons_end_rlbk_mark_id";
+
+		return $data->selectSet($sql);
+	}
+
+	/**
+	 * Consolidates a rollback operation
+	 */
+	function consolidateRollback($group,$mark) {
+		global $data;
+
+		$data->clean($group);
+		$data->clean($mark);
+
+		$sql = "SELECT \"{$this->emaj_schema}\".emaj_consolidate_rollback_group('{$group}','{$mark}') AS nbtblseq";
+
+		return $data->selectField($sql,'nbtblseq');
+	}
+
+	/**
 	 * Gets the global log statistics for a group between 2 marks
 	 * It also delivers the sql queries to look at the corresponding log rows
 	 * It creates a temp table to easily compute aggregates in other functions called in the same conversation

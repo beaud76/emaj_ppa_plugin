@@ -204,6 +204,8 @@ class Emaj extends Plugin {
 		'comment_group_ok',
 		'comment_mark_group',
 		'comment_mark_group_ok',
+		'consolidate_rollback',
+		'consolidate_rollback_ok',
 		'configure_groups',
 		'create_group',
 		'create_group_ok',
@@ -1195,7 +1197,7 @@ class Emaj extends Plugin {
 					'params'=> array('align' => 'right'),
 				),
 				'rlbkMark' => array(
-					'title' => $this->lang['emajmark'],
+					'title' => $this->lang['emajtargetmark'],
 					'field' => field('rlbk_mark'),
 				),
 				'rlbkMarkDateTime' => array(
@@ -1255,7 +1257,7 @@ class Emaj extends Plugin {
 					'params'=> array('align' => 'center'),
 				),
 				'rlbkMark' => array(
-					'title' => $this->lang['emajmark'],
+					'title' => $this->lang['emajtargetmark'],
 					'field' => field('rlbk_mark'),
 				),
 				'rlbkMarkDateTime' => array(
@@ -1342,6 +1344,68 @@ class Emaj extends Plugin {
 			echo "    }\n";
 			echo "  });\n";
 			echo "</script>\n";
+
+			// Display the E-Maj logged rollback operations that may be consolidated (i.e. transformed into unlogged rollback)
+			if ($this->emajdb->getNumEmajVersion() >= 20000){			// version >= 2.0.0
+
+				$columnsConsRlbk = array(
+					'consGroup' => array(
+						'title' => $this->lang['emajgroup'],
+						'field' => field('cons_group'),
+					),
+					'consTargetMark' => array(
+						'title' => $this->lang['emajtargetmark'],
+						'field' => field('cons_target_rlbk_mark_name'),
+					),
+					'consTargetMarkDateTime' => array(
+						'title' => $this->lang['emajmarksetat'],
+						'field' => field('cons_target_rlbk_mark_datetime'),
+					),
+					'rlbkNbRow' => array(
+						'title' => $this->lang['emajnbupdates'],
+						'field' => field('cons_rows'),
+						'params'=> array('align' => 'right'),
+					),
+					'rlbkNbMark' => array(
+						'title' => $this->lang['emajnbintermediatemark'],
+						'field' => field('cons_marks'),
+						'params'=> array('align' => 'right'),
+					),
+					'consEndMark' => array(
+						'title' => $this->lang['emajendrollbackmark'],
+						'field' => field('cons_end_rlbk_mark_name'),
+					),
+					'consEndMarkDateTime' => array(
+						'title' => $this->lang['emajmarksetat'],
+						'field' => field('cons_end_rlbk_mark_datetime'),
+					),
+					'actions' => array(
+						'title' => $lang['stractions'],
+					),
+				);
+
+				$actions = array(
+					'consolidate' => array(
+						'content' => $this->lang['emajconsolidate'],
+						'attr' => array (
+							'href' => array (
+								'url' => 'plugin.php',
+								'urlvars' => array (
+									'plugin' => $this->name,
+									'action' => 'consolidate_rollback',
+									'group' => field('cons_group'),
+									'mark' => field('cons_end_rlbk_mark_name'),
+								)))
+					),
+				);
+
+				// Get rollback information from the database
+				$consolidableRlbks = $this->emajdb->getConsolidableRlbk();
+
+				echo "<h3>{$this->lang['emajconsolidablerlbk']}</h3>\n";
+				$inProgressRlbks = $this->emajdb->getInProgressRlbk();
+				$this->printTable($consolidableRlbks, $columnsConsRlbk, $actions, 'consolidableRlbk', $this->lang['emajnorlbk']);
+			}
 		}
 
 		$this->printEmajFooter();
@@ -4081,6 +4145,50 @@ class Emaj extends Plugin {
 		}else{
 			$this->show_groups('',sprintf($this->lang['emajrlbkgroupserr'],$_POST['groups'],$_POST['mark']));
 		}
+	}
+
+	/**
+	 * Prepare a rollback consolidation: ask for confirmation
+	 */
+	function consolidate_rollback() {
+		global $misc, $lang;
+
+		$this->printPageHeader();
+
+		$misc->printTitle($this->lang['emajconsolidaterlbk']);
+
+		echo "<p>", sprintf($this->lang['emajconfirmconsolidaterlbk'],$misc->printVal($_REQUEST['mark']),$misc->printVal($_REQUEST['group'])), "</p>\n";
+		echo "<form action=\"plugin.php?plugin={$this->name}&amp;\" method=\"post\">\n";
+		echo "<p><input type=\"hidden\" name=\"action\" value=\"consolidate_rollback_ok\" />\n";
+		echo "<input type=\"hidden\" name=\"group\" value=\"", htmlspecialchars($_REQUEST['group']), "\" />\n";
+		echo "<input type=\"hidden\" name=\"mark\" value=\"", htmlspecialchars($_REQUEST['mark']), "\" />\n";
+		echo $misc->form;
+		echo "<input type=\"submit\" name=\"consolidaterlbk\" value=\"{$lang['strok']}\" />\n";
+		echo "<input type=\"submit\" name=\"cancel\" value=\"{$lang['strcancel']}\" /></p>\n";
+		echo "</form>\n";
+
+		$this->printEmajFooter();
+		$misc->printFooter();
+	}
+
+	/**
+	 * Perform a rollback consolidation
+	 */
+	function consolidate_rollback_ok() {
+		global $lang;
+
+		// process the click on the <cancel> button
+		if (isset($_POST['cancel'])) {
+			$this->show_rollbacks();
+			exit();
+		}
+
+		$status = $this->emajdb->consolidateRollback($_POST['group'],$_POST['mark']);
+		if ($status > 0)
+			$this->show_rollbacks(sprintf($this->lang['emajconsolidaterlbkok'],$_POST['mark'],$_POST['group']));
+		else
+			$this->show_rollbacks('',sprintf($this->lang['emajconsolidaterlbkerr'],$_POST['mark'],$_POST['group']));
+
 	}
 
 	/**

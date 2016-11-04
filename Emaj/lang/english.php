@@ -121,6 +121,15 @@
 	$plugin_lang['emajfilterrlbk3'] = 'completed since less than';
 	$plugin_lang['emajfilterrlbk4'] = 'hours';
 	$plugin_lang['emajfilter'] = 'Filter';
+	$plugin_lang['emajconsolidablerlbk'] = 'Consolidable E-Maj logged rollbacks';
+	$plugin_lang['emajtargetmark'] = 'Target mark';
+	$plugin_lang['emajendrollbackmark'] = 'End rollback mark';
+	$plugin_lang['emajnbintermediatemark'] = 'Nb intermediate marks';
+	$plugin_lang['emajconsolidate'] = 'Consolidate';
+	$plugin_lang['emajconsolidaterlbk'] = 'Consolidate a logged rollback';
+	$plugin_lang['emajconfirmconsolidaterlbk'] = 'Are you sure you want to consolidate the rollback ended with the mark "%s" of tables group "%s" ?';
+	$plugin_lang['emajconsolidaterlbkok'] = 'The rollback ended with the mark "%s" of tables group "%s" has been consolidated.';
+	$plugin_lang['emajconsolidaterlbkerr'] = 'Error while consolidating the rollback ended by the mark "%s" of tables group "%s"!';
 
 	// Group's properties and marks
 	$plugin_lang['emajgrouppropertiesmarks'] = 'Tables group "%s" properties and marks';
