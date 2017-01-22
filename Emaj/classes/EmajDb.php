@@ -27,7 +27,7 @@ class EmajDb {
 	/**
 	 * Constructor
 	 */
-	function EmajDb() {
+	function __construct() {
 	}
 
 	/**
