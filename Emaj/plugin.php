@@ -312,11 +312,11 @@ class Emaj extends Plugin {
 			$actions['rollbackgroup']['disable'] = true;
 		}
 		// disable the protect button if the mark is already protected
-		if (isset($actions['protectmark']) && $rowdata->fields['mark_state'] == 'ACTIVE-PROTECTED'){
+		if (isset($actions['protectmark']) && $rowdata->fields['mark_state'] != 'ACTIVE'){
 			$actions['protectmark']['disable'] = true;
 		}
 		// disable the unprotect button if the mark is not protected
-		if (isset($actions['unprotectmark']) && $rowdata->fields['mark_state'] == 'ACTIVE'){
+		if (isset($actions['unprotectmark']) && $rowdata->fields['mark_state'] != 'ACTIVE-PROTECTED'){
 			$actions['unprotectmark']['disable'] = true;
 		}
 		// if the mark is protected, set the flag to disable the rollback button for next marks
