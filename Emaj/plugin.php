@@ -888,6 +888,22 @@ class Emaj extends Plugin {
 					),
 				));
 			};
+			if ($this->emajdb->isEmaj_Adm() && $this->emajdb->getNumEmajVersion() >= 20100){	// version >= 2.1.0
+				$loggingActions = array_merge($loggingActions, array(
+					'alter_group' => array(
+						'content' => $lang['stralter'],
+						'attr' => array (
+							'href' => array (
+								'url' => 'plugin.php',
+								'urlvars' => array_merge($urlvars, array (
+									'plugin' => $this->name,
+									'action' => 'alter_group',
+									'back' => 'list',
+									'group' => field('group_name'),
+							))))
+					),
+				));
+			};
 			if ($this->emajdb->isEmaj_Adm()){
 				$loggingActions = array_merge($loggingActions, array(
 				'comment_group' => array(
@@ -1514,24 +1530,24 @@ class Emaj extends Plugin {
 				echo "  <li><a href=\"plugin.php?plugin={$this->name}&amp;&action=stop_group&amp;group=",urlencode($_REQUEST['group']),"&amp;back=detail&amp;{$misc->href}\">{$lang['strstop']}</a></li>\n";
 			}
 
-			// setmarkgroup
+			// set_mark_group
 			if ($this->emajdb->isEmaj_Adm() && $groupState == 'LOGGING'){
 				echo "  <li><a href=\"plugin.php?plugin={$this->name}&amp;&action=set_mark_group&amp;group=",urlencode($_REQUEST['group']),"&amp;back=detail&amp;{$misc->href}\">{$this->lang['emajsetmark']}</a></li>\n";
 			}
 
-			// resetgroup
+			// reset_group
 			if ($this->emajdb->isEmaj_Adm() && $groupState == 'IDLE'){
 				echo "  <li><a href=\"plugin.php?plugin={$this->name}&amp;&action=reset_group&amp;group=",urlencode($_REQUEST['group']),"&amp;back=detail&amp;{$misc->href}\">{$lang['strreset']}</a></li>\n";
 			}
 
-			// dropgroup
+			// drop_group
 			if ($this->emajdb->isEmaj_Adm() && $groupState == 'IDLE'){
 				echo "  <li><a href=\"plugin.php?plugin={$this->name}&amp;&action=drop_group&amp;group=",urlencode($_REQUEST['group']),"&amp;back=detail&amp;{$misc->href}\">{$lang['strdrop']}</a></li>\n";
 			}
 
-			// altergroup
+			// alter_group
 			if ($this->emajdb->getNumEmajVersion() >= 10000){			// version >= 1.0.0
-				if ($this->emajdb->isEmaj_Adm() && $groupState == 'IDLE'){
+				if ($this->emajdb->isEmaj_Adm() && ($groupState == 'IDLE' || $this->emajdb->getNumEmajVersion() >= 20100)){
 					echo "  <li><a href=\"plugin.php?plugin={$this->name}&amp;&action=alter_group&amp;group=",urlencode($_REQUEST['group']),"&amp;back=detail&amp;{$misc->href}\">{$lang['stralter']}</a></li>\n";
 				}
 			}
@@ -3009,14 +3025,16 @@ class Emaj extends Plugin {
 		}
 
 	// Check the group is always in IDLE state
-		$group = $this->emajdb->getGroup($_REQUEST['group']);
-		if ($group->fields['group_state'] != 'IDLE') {
-			if ($_POST['back']=='list') {
-				$this->show_groups('',sprintf($this->lang['emajcantaltergroup'],$_POST['group']));
-			}else{
-				$this->show_group('',sprintf($this->lang['emajcantaltergroup'],$_POST['group']));
-			}
-			return;
+		if ($this->emajdb->getNumEmajVersion() < 20100){			// version < 2.1.0
+			$group = $this->emajdb->getGroup($_REQUEST['group']);
+			if ($group->fields['group_state'] != 'IDLE') {
+				if ($_POST['back']=='list') {
+					$this->show_groups('',sprintf($this->lang['emajcantaltergroup'],$_POST['group']));
+				}else{
+					$this->show_group('',sprintf($this->lang['emajcantaltergroup'],$_POST['group']));
+				}
+		}
+		return;
 		}
 
 	// OK
