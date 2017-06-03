@@ -265,13 +265,17 @@ class Emaj extends Plugin {
 
 	// Function to dynamicaly modify actions list for tables
 	function tblseqPre(&$rowdata, $actions) {
-		// disable 'add' if the table already belong to a group
-		// otherwise, disable 'suppress'
+		// disable 'assign' if the table already belongs to a group
 		if ($rowdata->fields['grpdef_group'] != NULL){
 			$actions['assign']['disable'] = true;
 		}else{
+		// otherwise, disable 'remove' and 'update'
 			$actions['remove']['disable'] = true;
 			$actions['update']['disable'] = true;
+		// disable also 'assign' for unsupported object type
+			if ($rowdata->fields['relkind'] != 'r+' and $rowdata->fields['relkind'] != 'S+'){
+				$actions['assign']['disable'] = true;
+			}
 		};
 		return $actions;
 	}
@@ -360,15 +364,18 @@ class Emaj extends Plugin {
 	// It replaces the database value by an icon representing either a table or a sequence
 	function renderTblSeq($val) {
 		global $misc, $lang;
-		if ($val == '!'){						// unknown type
-			return "<img src=\"".$misc->icon('ObjectNotFound')."\" alt=\"{$this->lang['emajunknownobject']}\" title=\"{$this->lang['emajunknownobject']}\" style=\"vertical-align:bottom;\" />";
-		}
-		if ($val == 'r'){
+		if ($val == 'r+'){						// regular table
 			$icon = $misc->icon('Table');
 			$alt = $lang['strtable'];
-		}else{
+		}elseif ($val == 'S+'){					// sequence
 			$icon = $misc->icon('Sequence');
 			$alt = $lang['strsequence'];
+		}elseif ($val == '!'){					// object declared in the emaj_group_def table but unknown in the catalog
+			$icon = $misc->icon('ObjectNotFound');
+			$alt = $this->lang['emajunknownobject'];
+		}else{									// unsupported type
+			$icon = $misc->icon('ObjectNotFound');
+			$alt = $this->lang['emajunsupportedobject'];
 		}
 		return "<img src=\"{$icon}\" style=\"vertical-align:bottom;\" alt=\"{$alt}\" title=\"{$alt}\"/>";
 	}
@@ -1729,7 +1736,7 @@ class Emaj extends Plugin {
 							4: { sorter: false },
 							5: { sorter: false, filter: false },
 							6: { sorter: false },
-							6: { sorter: false },
+							7: { sorter: false },
 							},
 						emptyTo: 'none',
 						widgets: [\"zebra\", \"filter\"],
@@ -2368,12 +2375,16 @@ class Emaj extends Plugin {
 			$this->configure_groups($this->lang['emajspecifytblseqtoassign']);
 			exit();
 		}
-		// Test all tables/sequences to process are not yet assigned to a group
+		// Test all tables/sequences to process are not yet assigned to a group and have a valid type
 		if (isset($_REQUEST['ma'])) {
 			foreach($_REQUEST['ma'] as $t) {
 				$a = unserialize(htmlspecialchars_decode($t, ENT_QUOTES));
 				if ($a['group'] != ''){
 					$this->configure_groups('',sprintf($this->lang['emajtblseqyetgroup'],$a['appschema'],$a['tblseq']));
+					exit();
+				}
+				if ($a['type'] != 'r+' and $a['type'] != 'S+'){
+					$this->configure_groups('',sprintf($this->lang['emajtblseqbadtype'],$a['appschema'],$a['tblseq']));
 					exit();
 				}
 			}

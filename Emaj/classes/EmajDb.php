@@ -652,7 +652,9 @@ class EmajDb {
 
 		$data->clean($schema);
 
-		$sql = "SELECT 1, nspname, c.relname, c.relkind, pg_catalog.pg_get_userbyid(c.relowner) AS relowner,
+		$sql = "SELECT 1, nspname, c.relname,
+					c.relkind || case when relkind = 'S' or (relkind = 'r' and c.relpersistence = 'p' and not c.relhasoids) then '+' else '-' end as relkind,
+					pg_catalog.pg_get_userbyid(c.relowner) AS relowner,
 					pg_catalog.obj_description(c.oid, 'pg_class') AS relcomment, spcname AS tablespace,
 					grpdef_group, grpdef_priority ";
 		if ($this->getNumEmajVersion() >= 10000){			// version >= 1.0.0
@@ -681,9 +683,9 @@ class EmajDb {
 					LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
 					LEFT JOIN emaj.emaj_group_def ON grpdef_schema = nspname AND grpdef_tblseq = c.relname
 					LEFT JOIN pg_catalog.pg_tablespace pt ON pt.oid = c.reltablespace
-				WHERE c.relkind IN ('r','S') AND nspname='{$schema}'
+				WHERE c.relkind IN ('r','S','p') AND nspname='{$schema}'
 				UNION
-				SELECT 2, grpdef_schema AS nspname, grpdef_tblseq AS relname, '!' AS relkind, NULL,	NULL, NULL, 
+				SELECT 2, grpdef_schema AS nspname, grpdef_tblseq AS relname, '!' AS relkind, NULL, NULL, NULL, 
 					grpdef_group , grpdef_priority ";
 		if ($this->getNumEmajVersion() >= 10000){			// version >= 1.0.0
 			$sql .=

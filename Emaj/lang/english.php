@@ -50,6 +50,7 @@
 	$plugin_lang['emajgroupsconfiguration'] = 'Tables groups\' configuration';
 	$plugin_lang['emajschemaslist'] = 'Application schemas list';
 	$plugin_lang['emajunknownobject'] = 'This object is referenced in the emaj_group_def table but is not created.';
+	$plugin_lang['emajunsupportedobject'] = 'This object type is not supported by E-Maj (unlogged table, table with OIDS, partition table,...).';
 	$plugin_lang['emajtblseqofschema'] = 'Tables and sequences in schema "%s"';
 	$plugin_lang['emajassign'] = 'Assign';
 	$plugin_lang['emajremove'] = 'Remove';
@@ -61,6 +62,7 @@
 	$plugin_lang['emajnewtsp'] = '-- new tablespace --';
 	$plugin_lang['emajspecifytblseqtoassign'] = 'Specify at least one table or sequence to assign';
 	$plugin_lang['emajtblseqyetgroup'] = 'Error, " %s.%s " is already assigned to a tables group.';
+	$plugin_lang['emajtblseqbadtype'] = 'Error, type of " %s.%s " is not supported by E-Maj.';
 	$plugin_lang['emajassigntblseq'] = 'E-Maj: Assign tables / sequences to a tables group';
 	$plugin_lang['emajconfirmassigntblseq'] = 'Assign: %s';
 	$plugin_lang['emajenterpriority'] = 'Processing priority';

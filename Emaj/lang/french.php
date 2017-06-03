@@ -50,6 +50,7 @@
 	$plugin_lang['emajgroupsconfiguration'] = 'Configuration des groupes de tables';
 	$plugin_lang['emajschemaslist'] = 'Liste des schémas applicatifs';
 	$plugin_lang['emajunknownobject'] = 'Cet objet est référencé dans la table emaj_group_def mais n\'est pas créé.';
+	$plugin_lang['emajunsupportedobject'] = 'Ce type d\'objet n\'est pas supporté par E-Maj (unlogged table, table avec OIDS, table partitionnée,...).';
 	$plugin_lang['emajtblseqofschema'] = 'Tables et séquences du schéma "%s"';
 	$plugin_lang['emajassign'] = 'Affecter';
 	$plugin_lang['emajremove'] = 'Retirer';
@@ -61,6 +62,7 @@
 	$plugin_lang['emajnewtsp'] = '-- nouveau tablespace --';
 	$plugin_lang['emajspecifytblseqtoassign'] = 'Spécifier au moins une table ou séquence à affecter';
 	$plugin_lang['emajtblseqyetgroup'] = 'Erreur, " %s.%s " est déjà affecté à un groupe de tables.';
+	$plugin_lang['emajtblseqbadtype'] = 'Erreur, le type de " %s.%s " n\'est pas supporté par E-Maj.';
 	$plugin_lang['emajassigntblseq'] = 'E-Maj : Affecter des tables / séquences à un groupe de tables';
 	$plugin_lang['emajconfirmassigntblseq'] = 'Affecter : %s';
 	$plugin_lang['emajenterpriority'] = 'Priorité de traitement';
