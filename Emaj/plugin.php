@@ -3190,7 +3190,7 @@ class Emaj extends Plugin {
 	/**
 	 * Prepare start group: enter the initial mark name and confirm
 	 */
-	function start_group($msg = '', $errMsg = '') {
+	function start_group() {
 		global $misc, $lang;
 
 		if (!isset($_POST['mark'])) $_POST['mark'] = '';
@@ -3198,7 +3198,6 @@ class Emaj extends Plugin {
 		$this->printPageHeader();
 
 		$misc->printTitle($this->lang['emajstartagroup']);
-		$this->printMsg($msg,$errMsg);
 
 		echo "<form action=\"plugin.php?plugin={$this->name}&amp;\" method=\"post\">\n";
 		echo "<p>", sprintf($this->lang['emajconfirmstartgroup'], $misc->printVal($_REQUEST['group'])), "</p>\n";
@@ -3285,7 +3284,7 @@ class Emaj extends Plugin {
 	/**
 	 * Prepare start groups: enter the initial mark name and confirm
 	 */
-	function start_groups($msg = '', $errMsg = '') {
+	function start_groups() {
 		global $misc, $lang;
 
 		if (!isset($_REQUEST['ma'])) {
@@ -3297,7 +3296,6 @@ class Emaj extends Plugin {
 		$this->printPageHeader();
 
 		$misc->printTitle($this->lang['emajstartgroups']);
-		$this->printMsg($msg,$errMsg);
 
 		// build the groups list
 		$groupsList='';
@@ -3637,7 +3635,7 @@ class Emaj extends Plugin {
 	/**
 	 * Prepare set mark group: ask for the mark name and confirmation
 	 */
-	function set_mark_group($msg = '', $errMsg = '') {
+	function set_mark_group() {
 		global $misc, $lang;
 
 		if (!isset($_POST['mark'])) $_POST['mark'] = '';
@@ -3645,7 +3643,6 @@ class Emaj extends Plugin {
 		$this->printPageHeader();
 
 		$misc->printTitle($this->lang['emajsetamark']);
-		$this->printMsg($msg,$errMsg);
 
 		echo "<p>", sprintf($this->lang['emajconfirmsetmarkgroup'], $misc->printVal($_REQUEST['group'])), "</p>\n";
 		echo "<form action=\"plugin.php?plugin={$this->name}&amp;\" method=\"post\">\n";
@@ -3731,7 +3728,7 @@ class Emaj extends Plugin {
 	/**
 	 * Prepare set mark groups: ask for the mark name and confirmation
 	 */
-	function set_mark_groups($msg = '', $errMsg = '') {
+	function set_mark_groups() {
 		global $misc, $lang;
 
 		if (!isset($_REQUEST['ma'])) {
@@ -3743,7 +3740,6 @@ class Emaj extends Plugin {
 		$this->printPageHeader();
 
 		$misc->printTitle($this->lang['emajsetamark']);
-		$this->printMsg($msg,$errMsg);
 
 		// build the groups list
 		$groupsList='';
@@ -4286,7 +4282,7 @@ class Emaj extends Plugin {
 	/**
 	 * Prepare rename_mark_group: ask for the new name for the mark to rename and confirmation
 	 */
-	function rename_mark_group($msg = '', $errMsg = '') {
+	function rename_mark_group() {
 		global $misc, $lang;
 
 		if (!isset($_POST['group'])) $_POST['group'] = '';
@@ -4295,7 +4291,6 @@ class Emaj extends Plugin {
 		$this->printPageHeader();
 
 		$misc->printTitle($this->lang['emajrenameamark']);
-		$this->printMsg($msg,$errMsg);
 
 		echo "<p>", sprintf($this->lang['emajconfirmrenamemark'], $misc->printVal($_REQUEST['mark']), $misc->printVal($_REQUEST['group'])), "</p>\n";
 		echo "<form action=\"plugin.php?plugin={$this->name}&amp;\" method=\"post\">\n";
