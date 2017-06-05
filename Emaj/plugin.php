@@ -197,6 +197,8 @@ class Emaj extends Plugin {
 		$actions = array(
 		'alter_group',
 		'alter_group_ok',
+		'alter_groups',
+		'alter_groups_ok',
 		'assign_tblseq',
 		'assign_tblseq_ok',
 		'call_sqledit',
@@ -903,6 +905,9 @@ class Emaj extends Plugin {
 							))))
 					),
 				));
+				if ($this->emajdb->getNumEmajVersion() >= 20100){	// version >= 2.1.0
+						$loggingActions['alter_group']['multiaction'] = 'alter_groups';
+				}
 			};
 			if ($this->emajdb->isEmaj_Adm()){
 				$loggingActions = array_merge($loggingActions, array(
@@ -996,6 +1001,9 @@ class Emaj extends Plugin {
 							))))
 					),
 				));
+				if ($this->emajdb->getNumEmajVersion() >= 20100){	// version >= 2.1.0
+						$idleActions['alter_group']['multiaction'] = 'alter_groups';
+				}
 			};
 			if ($this->emajdb->isEmaj_Adm()){
 				$idleActions = array_merge($idleActions, array(
@@ -3039,7 +3047,7 @@ class Emaj extends Plugin {
 
 	// OK
 		$status = $this->emajdb->alterGroup($_POST['group']);
-		if ($status > 0){
+		if ($status >= 0){
 			$_reload_browser = true;
 			if ($_POST['back'] == 'list') {
 				$this->show_groups(sprintf($this->lang['emajaltergroupok'],$_POST['group']));
@@ -3047,19 +3055,74 @@ class Emaj extends Plugin {
 				$this->show_group(sprintf($this->lang['emajaltergroupok'],$_POST['group']));
 			}
 		}else
-			if ($status == 0){
-				$_reload_browser = true;
-				if ($_POST['back'] == 'list') {
-					$this->show_groups(sprintf($this->lang['emajalternogroup'],$_POST['group']));
-				}else{
-					$this->show_group(sprintf($this->lang['emajalternogroup'],$_POST['group']));
-				}
-			}else
-				if ($_POST['back'] == 'list') {
-					$this->show_groups('',sprintf($this->lang['emajaltergrouperr'],$_POST['group']));
-				}else{
-					$this->show_group('',sprintf($this->lang['emajaltergrouperr'],$_POST['group']));
-				}
+			if ($_POST['back'] == 'list') {
+				$this->show_groups('',sprintf($this->lang['emajaltergrouperr'],$_POST['group']));
+			}else{
+				$this->show_group('',sprintf($this->lang['emajaltergrouperr'],$_POST['group']));
+			}
+	}
+
+	/**
+	 * Prepare alter groups: ask for confirmation
+	 */
+	function alter_groups() {
+		global $misc, $lang;
+
+		if (!isset($_REQUEST['ma'])) {
+			$this->show_groups('',$this->lang['emajnoselectedgroup']);
+			return;
+		}
+
+		$this->printPageHeader();
+
+		$misc->printTitle($this->lang['emajaltergroups']);
+
+		// build the groups list
+		$groupsList='';
+		foreach($_REQUEST['ma'] as $v) {
+			$a = unserialize(htmlspecialchars_decode($v, ENT_QUOTES));
+			$groupsList.=$a['group'].', ';
+		}
+		$groupsList=substr($groupsList,0,strlen($groupsList)-2);
+
+		echo "<p>", sprintf($this->lang['emajconfirmaltergroups'], $misc->printVal($groupsList)), "</p>\n";
+		echo "<form action=\"plugin.php?plugin={$this->name}&amp;\" method=\"post\">\n";
+		echo "<p><input type=\"hidden\" name=\"action\" value=\"alter_groups_ok\" />\n";
+		echo "<input type=\"hidden\" name=\"groups\" value=\"", htmlspecialchars($groupsList), "\" />\n";
+		echo "<input type=\"hidden\" name=\"back\" value=\"", htmlspecialchars($_REQUEST['back']), "\" />\n";
+		echo $misc->form;
+		echo "<input type=\"submit\" name=\"altergroups\" value=\"{$lang['stralter']}\" />\n";
+		echo "<input type=\"submit\" name=\"cancel\" value=\"{$lang['strcancel']}\" /></p>\n";
+		echo "</form>\n";
+
+		$this->printEmajFooter();
+		$misc->printFooter();
+	}
+
+	/**
+	 * Perform alter groups
+	 */
+	function alter_groups_ok() {
+		global $lang, $_reload_browser;
+
+	// process the click on the <cancel> button
+		if (isset($_POST['cancel'])) { $this->show_groups(); exit(); }
+
+	// OK
+		$status = $this->emajdb->alterGroups($_POST['groups']);
+		if ($status >= 0){
+			$_reload_browser = true;
+			if ($_POST['back'] == 'list') {
+				$this->show_groups(sprintf($this->lang['emajaltergroupsok'],$_POST['groups']));
+			}else{
+				$this->show_group(sprintf($this->lang['emajaltergroupsok'],$_POST['groups']));
+			}
+		}else
+			if ($_POST['back'] == 'list') {
+				$this->show_groups('',sprintf($this->lang['emajaltergroupserr'],$_POST['groups']));
+			}else{
+				$this->show_group('',sprintf($this->lang['emajaltergroupserr'],$_POST['groups']));
+			}
 	}
 
 	/**

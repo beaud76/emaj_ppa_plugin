@@ -194,8 +194,13 @@
 	$plugin_lang['emajconfirmaltergroup'] = 'Are you sure you want to alter tables group "%s" ?';
 	$plugin_lang['emajcantaltergroup'] = 'Altering the tables group "%s" is not possible. The group is started.';
 	$plugin_lang['emajaltergroupok'] = 'The tables group "%s" has been altered.';
-	$plugin_lang['emajalternogroup'] = 'No detected change for the tables group "%s".';
 	$plugin_lang['emajaltergrouperr'] = 'Error during tables group "%s" alter!';
+
+	// Groups alter
+	$plugin_lang['emajaltergroups'] = 'E-Maj: Alter tables groups';
+	$plugin_lang['emajconfirmaltergroups'] = 'Are you sure you want to alter tables groups "%s" ?';
+	$plugin_lang['emajaltergroupsok'] = 'The tables groups "%s" have been altered.';
+	$plugin_lang['emajaltergroupserr'] = 'Error during tables groups "%s" alter!';
 
 	// Group comment
 	$plugin_lang['emajcommentagroup'] = 'E-Maj: Record a comment for a tables group';

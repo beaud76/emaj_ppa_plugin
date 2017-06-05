@@ -960,6 +960,20 @@ class EmajDb {
 	}
 
 	/**
+	 * Alters several groups
+	 */
+	function alterGroups($groups) {
+		global $data;
+
+		$data->clean($groups);
+		$groupsArray="ARRAY['".str_replace(', ',"','",$groups)."']";
+
+		$sql = "SELECT \"{$this->emaj_schema}\".emaj_alter_groups({$groupsArray}) AS nbtblseq";
+
+		return $data->selectField($sql,'nbtblseq');
+	}
+
+	/**
 	 * Sets a comment for a group
 	 */
 	function setCommentGroup($group,$comment) {
