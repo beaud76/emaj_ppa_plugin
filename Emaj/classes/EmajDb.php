@@ -583,8 +583,11 @@ class EmajDb {
 							pg_size_pretty(pg_total_relation_size(quote_ident(rel_log_schema) || '.' || quote_ident(rel_log_table)))
 						END AS pretty_log_size 
 					FROM \"{$this->emaj_schema}\".emaj_relation
-					WHERE rel_group = '{$group}'
-					ORDER BY rel_schema, rel_tblseq";
+					WHERE rel_group = '{$group}'";
+			if ($this->getNumEmajVersion() >= 22000){	// version >= 2.2.0
+				$sql .= " AND upper_inf(rel_time_range)";
+			}
+			$sql .= "		ORDER BY rel_schema, rel_tblseq";
 		} else {
 			$sql = "SELECT rel_schema, rel_tblseq, rel_kind || '+' AS relkind, rel_priority";
 			if ($this->getNumEmajVersion() >= 10000){	// version >= 1.0.0
@@ -834,12 +837,13 @@ class EmajDb {
 	/**
 	 * Update a table or sequence into the emaj_group_def table
 	 */
-	function updateTblSeq($schema,$tblseq,$group,$priority,$logSchemaSuffix,$emajNamesPrefix,$logDatTsp,$logIdxTsp) {
+	function updateTblSeq($schema,$tblseq,$groupOld,$groupNew,$priority,$logSchemaSuffix,$emajNamesPrefix,$logDatTsp,$logIdxTsp) {
 		global $data;
 
 		$data->clean($schema);
 		$data->clean($tblseq);
-		$data->clean($group);
+		$data->clean($groupOld);
+		$data->clean($groupNew);
 		$data->clean($priority);
 		$data->clean($logSchemaSuffix);
 		$data->clean($emajNamesPrefix);
@@ -859,7 +863,7 @@ class EmajDb {
 
 		// Update the row in the emaj_group_def table
 		$sql = "UPDATE emaj.emaj_group_def SET 
-					grpdef_group = '{$group}'";
+					grpdef_group = '{$groupNew}'";
 		if ($priority == '')
 			$sql .= ", grpdef_priority = NULL";
 		else
@@ -887,7 +891,7 @@ class EmajDb {
 				$sql .= ", grpdef_log_idx_tsp = '{$logIdxTsp}'";
 		}
 		$sql .=
-               " WHERE grpdef_schema = '{$schema}' AND grpdef_tblseq = '{$tblseq}'";
+               " WHERE grpdef_schema = '{$schema}' AND grpdef_tblseq = '{$tblseq}' AND grpdef_group = '{$groupOld}'";
 
 		return $data->execute($sql);
 	}
@@ -1391,7 +1395,7 @@ class EmajDb {
 	 * Returns information about all alter_group operations that have been executed after a mark set for one or several groups
 	 * The function is called when emaj version >= 2.1
 	 */
-	function getAlterAfterMarkGroups($groups,$mark) {
+	function getAlterAfterMarkGroups($groups,$mark,$emajlang) {
 
 		global $data;
 
@@ -1404,37 +1408,39 @@ class EmajDb {
 		// look at the alter group operations executed after the mark
 		$sql = "SELECT time_tx_timestamp, altr_step, CASE
 				  WHEN altr_step = 'REMOVE_TBL' THEN
-					'The table ' || quote_ident(altr_schema) || '.' || quote_ident(altr_tblseq) || ' has been removed from the tables group ' || quote_literal(altr_group)
+					format('{$emajlang['emajalteredremovetbl']}', quote_ident(altr_schema), quote_ident(altr_tblseq), quote_literal(altr_group))
 				  WHEN altr_step = 'REMOVE_SEQ' THEN
-					'The sequence ' || quote_ident(altr_schema) || '.' || quote_ident(altr_tblseq) || ' has been removed from the tables group ' || quote_literal(altr_group)
+					format('{$emajlang['emajalteredremoveseq']}', quote_ident(altr_schema), quote_ident(altr_tblseq), quote_literal(altr_group))
 				  WHEN altr_step = 'REPAIR_TBL' THEN
-					'E-Maj objects for the table ' || quote_ident(altr_schema) || '.' || quote_ident(altr_tblseq) || ' have been repaired'
+					format('{$emajlang['emajalteredrepairtbl']}', quote_ident(altr_schema), quote_ident(altr_tblseq))
 				  WHEN altr_step = 'REPAIR_SEQ' THEN
-					'E-Maj objects for the sequence ' || quote_ident(altr_schema) || '.' || quote_ident(altr_tblseq) || ' have been repaired'
+					format('{$emajlang['emajalteredrepairseq']}', quote_ident(altr_schema), quote_ident(altr_tblseq))
 				  WHEN altr_step = 'CHANGE_TBL_LOG_SCHEMA' THEN
-					'The E-Maj log schema for the table ' || quote_ident(altr_schema) || '.' || quote_ident(altr_tblseq) || ' has been changed'
+					format('{$emajlang['emajalteredchangetbllogschema']}', quote_ident(altr_schema), quote_ident(altr_tblseq))
 				  WHEN altr_step = 'CHANGE_TBL_NAMES_PREFIX' THEN
-					'The E-Maj names prefix for the table ' || quote_ident(altr_schema) || '.' || quote_ident(altr_tblseq) || ' has been changed'
+					format('{$emajlang['emajalteredchangetblnamesprefix']}', quote_ident(altr_schema), quote_ident(altr_tblseq))
 				  WHEN altr_step = 'CHANGE_TBL_LOG_DATA_TSP' THEN
-					'The tablespace for the log data files of the table ' || quote_ident(altr_schema) || '.' || quote_ident(altr_tblseq) || ' has been changed'
+					format('{$emajlang['emajalteredchangetbllogdatatsp']}', quote_ident(altr_schema), quote_ident(altr_tblseq))
 				  WHEN altr_step = 'CHANGE_TBL_LOG_INDEX_TSP' THEN
-					'The tablespace for the log index files of the table ' || quote_ident(altr_schema) || '.' || quote_ident(altr_tblseq) || ' has been changed'
+					format('{$emajlang['emajalteredchangetbllogindextsp']}', quote_ident(altr_schema), quote_ident(altr_tblseq))
 				  WHEN altr_step = 'ASSIGN_REL' THEN
-					'The table ' || quote_ident(altr_schema) || '.' || quote_ident(altr_tblseq) || ' has been moved from the tables group ' || quote_literal(altr_group) || ' to the tables group ' || quote_literal(altr_new_group)
+					format('{$emajlang['emajalteredremovetbl']}', quote_ident(altr_schema), quote_ident(altr_tblseq), quote_literal(altr_group), quote_literal(altr_new_group))
 				  WHEN altr_step = 'CHANGE_REL_PRIORITY' THEN
-					'The E-Maj priority for the table ' || quote_ident(altr_schema) || '.' || quote_ident(altr_tblseq) || ' has been changed'
+					format('{$emajlang['emajalteredchangerelpriority']}', quote_ident(altr_schema), quote_ident(altr_tblseq))
 				  WHEN altr_step = 'ADD_TBL' THEN
-					'The table ' || quote_ident(altr_schema) || '.' || quote_ident(altr_tblseq) || ' has been added to the tables group ' || quote_literal(altr_group)
+					format('{$emajlang['emajalteredaddtbl']}', quote_ident(altr_schema), quote_ident(altr_tblseq), quote_literal(altr_group))
 				  WHEN altr_step = 'ADD_SEQ' THEN
-					'The sequence ' || quote_ident(altr_schema) || '.' || quote_ident(altr_tblseq) || ' has been added to the tables group ' || quote_literal(altr_group)
+					format('{$emajlang['emajalteredaddseq']}', quote_ident(altr_schema), quote_ident(altr_tblseq), quote_literal(altr_group))
                   END AS altr_action, 
-				CASE WHEN altr_step IN ('REPAIR_TBL', 'CHANGE_TBL_LOG_SCHEMA', 'CHANGE_TBL_NAMES_PREFIX', 'CHANGE_TBL_LOG_DATA_TSP', 'CHANGE_TBL_LOG_INDEX_TSP', 'CHANGE_REL_PRIORITY')
+				CASE WHEN altr_step IN ('REMOVE_TBL', 'REMOVE_SEQ', 'REPAIR_TBL',
+										'CHANGE_TBL_LOG_SCHEMA', 'CHANGE_TBL_NAMES_PREFIX', 'CHANGE_TBL_LOG_DATA_TSP', 'CHANGE_TBL_LOG_INDEX_TSP', 'CHANGE_REL_PRIORITY')
 					THEN false ELSE true END AS altr_auto_rolled_back
-				  FROM \"{$this->emaj_schema}\".emaj_alter_plan, \"{$this->emaj_schema}\".emaj_mark, \"{$this->emaj_schema}\".emaj_time_stamp
-				  WHERE altr_group = ANY ({$groupsArray})
-			    	AND mark_group = '{$firstGroup}' AND mark_name = '{$mark}'
-					AND altr_time_id > mark_time_id
-					AND altr_time_id = time_id
+				  FROM \"{$this->emaj_schema}\".emaj_alter_plan, \"{$this->emaj_schema}\".emaj_time_stamp
+				  WHERE time_id = altr_time_id
+					AND altr_group = ANY ({$groupsArray})
+					AND altr_time_id >
+						(SELECT mark_time_id FROM \"{$this->emaj_schema}\".emaj_mark WHERE mark_group = '{$firstGroup}' AND mark_name = '{$mark}')
+					AND altr_rlbk_id IS NULL
 					AND altr_step IN ('REMOVE_TBL', 'REMOVE_SEQ', 'REPAIR_TBL', 'REPAIR_SEQ', 'CHANGE_TBL_LOG_SCHEMA', 'CHANGE_TBL_NAMES_PREFIX',
 									  'CHANGE_TBL_LOG_DATA_TSP', 'CHANGE_TBL_LOG_INDEX_TSP', 'ASSIGN_REL', 'CHANGE_REL_PRIORITY', 'ADD_TBL', 'ADD_SEQ')
 				  ORDER BY time_tx_timestamp, altr_schema, altr_tblseq, altr_step";
@@ -1450,10 +1456,22 @@ class EmajDb {
 		$data->clean($group);
 		$data->clean($mark);
 
-		if ($isLogged){
-			$sql = "SELECT\"{$this->emaj_schema}\".emaj_logged_rollback_group('{$group}','{$mark}') AS nbtblseq";
+		if ($this->getNumEmajVersion() >= 20100){	// version >= 2.1.0
+			if ($isLogged){
+				$sql = "SELECT sum(substring(rlbk_message from '^\d+')::integer) AS nbtblseq
+						FROM \"{$this->emaj_schema}\".emaj_logged_rollback_group('{$group}','{$mark}',true)
+						WHERE rlbk_severity = 'Notice'";
+			}else{
+				$sql = "SELECT sum(substring(rlbk_message from '^\d+')::integer) AS nbtblseq
+						FROM \"{$this->emaj_schema}\".emaj_rollback_group('{$group}','{$mark}',true)
+						WHERE rlbk_severity = 'Notice'";
+			}
 		}else{
-			$sql = "SELECT \"{$this->emaj_schema}\".emaj_rollback_group('{$group}','{$mark}') AS nbtblseq";
+			if ($isLogged){
+				$sql = "SELECT\"{$this->emaj_schema}\".emaj_logged_rollback_group('{$group}','{$mark}') AS nbtblseq";
+			}else{
+				$sql = "SELECT \"{$this->emaj_schema}\".emaj_rollback_group('{$group}','{$mark}') AS nbtblseq";
+			}
 		}
 
 		return $data->selectField($sql,'nbtblseq');
@@ -1462,7 +1480,7 @@ class EmajDb {
 	/**
 	 * rollbacks asynchronously one or several groups to a mark, using a single session
 	 */
-	function asyncRollbackGroups($groups,$mark,$isLogged,$psqlExe,$tempDir) {
+	function asyncRollbackGroups($groups,$mark,$isLogged,$psqlExe,$tempDir,$isMulti) {
 		global $data, $misc;
 
 		$data->clean($groups);
@@ -1474,13 +1492,22 @@ class EmajDb {
 
 		// Initialize the rollback operation and get its rollback id
 		$isL = $isLogged ? 'true' : 'false';
-		$sql = "SELECT \"{$this->emaj_schema}\"._rlbk_init({$groupsArray}, '{$mark}', {$isL}, 1, false) as rlbk_id";
-		$rlbkId = $data->selectField($sql,'rlbk_id');
+		$isM = $isMulti ? 'true' : 'false';
+		if ($this->getNumEmajVersion() >= 20100){	// version >= 2.1.0
+			$sql1 = "SELECT \"{$this->emaj_schema}\"._rlbk_init({$groupsArray}, '{$mark}', {$isL}, 1, $isM, true) as rlbk_id";
+		} else {
+			$sql1 = "SELECT \"{$this->emaj_schema}\"._rlbk_init({$groupsArray}, '{$mark}', {$isL}, 1, $isM) as rlbk_id";
+		}
+		$rlbkId = $data->selectField($sql1,'rlbk_id');
 
 		// Build the psql report file name, the SQL command and submit the rollback execution asynchronously
+		if ($this->getNumEmajVersion() >= 20100){	// version >= 2.1.0
+			$sql2 = "SELECT * FROM \"{$this->emaj_schema}\"._rlbk_async({$rlbkId},{$isM},true)";
+		} else {
+			$sql2 = "SELECT \"{$this->emaj_schema}\"._rlbk_async({$rlbkId},{$isM})";
+		}
 		$psqlReport = "rlbk_{$rlbkId}_report";
-		$sql = "SELECT \"{$this->emaj_schema}\"._rlbk_async({$rlbkId},false)";
-		$this->execPsqlInBackground($psqlExe,$sql,$tempDir,$psqlReport);
+		$this->execPsqlInBackground($psqlExe,$sql2,$tempDir,$psqlReport);
 
 		return $rlbkId;
 	}
@@ -1491,7 +1518,7 @@ class EmajDb {
 	function execPsqlInBackground($psqlExe,$stmt,$tempDir,$psqlReport) {
 		global $misc;
 
-		// Set environmental variables that psql needs to connect
+		// Set environment variables that psql needs to connect
 		$server_info = $misc->getServerInfo();
 		putenv('PGPASSWORD=' . $server_info['password']);
 		putenv('PGUSER=' . $server_info['username']);
@@ -1506,11 +1533,11 @@ class EmajDb {
 
 		// Build and submit the psql command
 		if (substr(php_uname(), 0, 3) == "Win"){
-			$psqlCmd = "{$psqlExe} -d {$_REQUEST['database']} -c \"{$stmt}\" -o \"{$tempDir}\\{$psqlReport}\" 2>&1";
+			$psqlCmd = "{$psqlExe} -d {$_REQUEST['database']} -c \"{$stmt}\" -o {$tempDir}\\{$psqlReport} 2>&1";
 			pclose(popen("start /b \"\" ". $psqlCmd, "r"));
 		} else {
-			$psqlCmd = "{$psqlExe} -d {$_REQUEST['database']} -c \"{$stmt}\" -o \"{$tempDir}/{$psqlReport}\" 2>&1";
-			exec($psqlCmd . " > /dev/null &");  
+			$psqlCmd = "{$psqlExe} -d {$_REQUEST['database']} -c \"{$stmt}\" -o {$tempDir}/{$psqlReport} 2>&1";
+			exec($psqlCmd . " > /dev/null &");
 		}
 	}
 
@@ -1664,10 +1691,22 @@ class EmajDb {
 		$groupsArray="ARRAY['".str_replace(', ',"','",$groups)."']";
 		$data->clean($mark);
 
-		if ($isLogged){
-			$sql = "SELECT \"{$this->emaj_schema}\".emaj_logged_rollback_groups({$groupsArray},'{$mark}') AS nbtblseq";
+		if ($this->getNumEmajVersion() >= 20100){	// version >= 2.1.0
+			if ($isLogged){
+				$sql = "SELECT sum(substring(rlbk_message from '^\d+')::integer) AS nbtblseq
+						FROM \"{$this->emaj_schema}\".emaj_logged_rollback_groups({$groupsArray},'{$mark}',true)
+						WHERE rlbk_severity = 'Notice'";
+			}else{
+				$sql = "SELECT sum(substring(rlbk_message from '^\d+')::integer) AS nbtblseq
+						FROM \"{$this->emaj_schema}\".emaj_rollback_groups({$groupsArray},'{$mark}',true)
+						WHERE rlbk_severity = 'Notice'";
+			}
 		}else{
-			$sql = "SELECT\"{$this->emaj_schema}\".emaj_rollback_groups({$groupsArray},'{$mark}') AS nbtblseq";
+			if ($isLogged){
+				$sql = "SELECT \"{$this->emaj_schema}\".emaj_logged_rollback_groups({$groupsArray},'{$mark}') AS nbtblseq";
+			}else{
+				$sql = "SELECT\"{$this->emaj_schema}\".emaj_rollback_groups({$groupsArray},'{$mark}') AS nbtblseq";
+			}
 		}
 
 		return $data->selectField($sql,'nbtblseq');

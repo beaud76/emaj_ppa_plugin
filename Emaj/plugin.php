@@ -2667,13 +2667,14 @@ class Emaj extends Plugin {
 
 		echo "<input type=\"hidden\" name=\"appschema\" value=\"", htmlspecialchars($_REQUEST['appschema']), "\" />\n";
 		echo "<input type=\"hidden\" name=\"tblseq\" value=\"", htmlspecialchars($_REQUEST['tblseq']), "\" />\n";
+		echo "<input type=\"hidden\" name=\"groupold\" value=\"", htmlspecialchars($_REQUEST['group']), "\" />\n";
 
 		echo "<p>", sprintf($this->lang['emajconfirmupdatetblseq'], "{$_REQUEST['appschema']}.{$_REQUEST['tblseq']}"), "</p>\n";
 
 		// Display the input fields depending on the context
 		echo "<table>\n";
 		echo "<tr><th class=\"data left required\" rowspan=2>{$this->lang['emajgroup']}</th>";
-		echo "<td class=\"data1\"><input id=\"groupInput\" type=\"text\" name=\"group\" value=\"{$_REQUEST['group']}\"/><span style=\"font-size: smaller; vertical-align: super;\"> (1)</span></td></tr>\n";
+		echo "<td class=\"data1\"><input id=\"groupInput\" type=\"text\" name=\"groupnew\" value=\"{$_REQUEST['group']}\"/><span style=\"font-size: smaller; vertical-align: super;\"> (1)</span></td></tr>\n";
 		echo "<tr><td><select id=\"groupList\" name=\"group1\"><option value=\"new_group\">{$this->lang['emajnewgroup']}</option>\n";
 		if ($knownGroups->recordCount() > 0) {
 			foreach($knownGroups as $r)
@@ -2792,7 +2793,7 @@ class Emaj extends Plugin {
 	// process the click on the <cancel> button
 		if (isset($_POST['cancel'])) {$this->configure_groups(); exit();}
 
-		$status = $this->emajdb->updateTblSeq($_POST['appschema'],$_POST['tblseq'],$_POST['group'],
+		$status = $this->emajdb->updateTblSeq($_POST['appschema'],$_POST['tblseq'],$_POST['groupold'],$_POST['groupnew'],
 							$_POST['priority'], $_POST['suffix'], $_POST['nameprefix'], $_POST['logdattsp'], $_POST['logidxtsp']);
 		if ($status == 0)
 			$this->configure_groups($this->lang['emajmodifygroupok']);
@@ -3933,7 +3934,6 @@ class Emaj extends Plugin {
 
 		echo "<style type=\"text/css\">[disabled]{color:#933;}</style>\n";
 		echo "<form action=\"plugin.php?plugin={$this->name}&amp;\" method=\"post\">\n";
-//		echo "<p><input type=\"hidden\" name=\"action\" value=\"rollback_group_ok\" />\n";
 		echo "<p><input type=\"hidden\" name=\"action\" value=\"rollback_group_confirm_alter\" />\n";
 
 		echo "<input type=\"hidden\" name=\"group\" value=\"", htmlspecialchars($_REQUEST['group']), "\" />\n";
@@ -4022,7 +4022,7 @@ class Emaj extends Plugin {
 				return;
 			}
 	
-			$alterGroupSteps = $this->emajdb->getAlterAfterMarkGroups($_POST['group'],$_POST['mark']);
+			$alterGroupSteps = $this->emajdb->getAlterAfterMarkGroups($_POST['group'],$_POST['mark'],$this->lang);
 
 			if ($alterGroupSteps->recordCount() > 0) {
 				// there are alter_group operation to cross over, so ask for a confirmation
@@ -4062,7 +4062,7 @@ class Emaj extends Plugin {
 				echo "<input type=\"hidden\" name=\"group\" value=\"", htmlspecialchars($_REQUEST['group']), "\" />\n";
 				echo "<input type=\"hidden\" name=\"mark\" value=\"", htmlspecialchars($_REQUEST['mark']), "\" />\n";
 				echo "<input type=\"hidden\" name=\"back\" value=\"", htmlspecialchars($_REQUEST['back']), "\" />\n";
-				echo "<input type=\"hidden\" name=\"rollbacktype\"", htmlspecialchars($_REQUEST['unlogged']), "\" />\n";
+				echo "<input type=\"hidden\" name=\"rollbacktype\"", htmlspecialchars($_REQUEST['rollbacktype']), "\" />\n";
 				if (isset($_POST['async'])) {
 					echo "<input type=\"hidden\" name=\"async\"", htmlspecialchars($_REQUEST['async']), "\" />\n";
 				}
@@ -4157,7 +4157,7 @@ class Emaj extends Plugin {
 				unlink($testFileName);
 			}
 
-			$rlbkId = $this->emajdb->asyncRollbackGroups($_POST['group'],$_POST['mark'],$_POST['rollbacktype']=='logged', $psqlExe, $this->conf['temp_dir'].$sep);
+			$rlbkId = $this->emajdb->asyncRollbackGroups($_POST['group'],$_POST['mark'],$_POST['rollbacktype']=='logged', $psqlExe, $this->conf['temp_dir'].$sep, false);
 			$this->show_rollbacks(sprintf($this->lang['emajasyncrlbkstarted'],$rlbkId));
 			exit;
 		}
@@ -4312,11 +4312,11 @@ class Emaj extends Plugin {
 				$this->show_groups('',sprintf($this->lang['emajcantrlbkinvalidmarkgroups'],$_POST['groups'],$_POST['mark']));
 				return;
 			}
-	
-			$alterGroupSteps = $this->emajdb->getAlterAfterMarkGroups($_POST['groups'],$_POST['mark']);
+
+			$alterGroupSteps = $this->emajdb->getAlterAfterMarkGroups($_POST['groups'],$_POST['mark'],$this->lang);
 
 			if ($alterGroupSteps->recordCount() > 0) {
-				// there are alter_group operation to cross over, so ask for a confirmation
+				// there are alter_group operations to cross over, so ask for a confirmation
 
 				$columns = array(
 					'time' => array(
@@ -4334,9 +4334,9 @@ class Emaj extends Plugin {
 						'params'=> array('function' => array($this, 'renderBooleanIcon'),'align' => 'center')
 					),
 				);
-	
+
 				$actions = array ();
-	
+
 				$this->printPageHeader();
 
 				$misc->printTitle($this->lang['emajrlbkgroups']);
@@ -4353,7 +4353,7 @@ class Emaj extends Plugin {
 				echo "<input type=\"hidden\" name=\"groups\" value=\"", htmlspecialchars($_REQUEST['groups']), "\" />\n";
 				echo "<input type=\"hidden\" name=\"mark\" value=\"", htmlspecialchars($_REQUEST['mark']), "\" />\n";
 				echo "<input type=\"hidden\" name=\"back\" value=\"", htmlspecialchars($_REQUEST['back']), "\" />\n";
-				echo "<input type=\"hidden\" name=\"rollbacktype\"", htmlspecialchars($_REQUEST['unlogged']), "\" />\n";
+				echo "<input type=\"hidden\" name=\"rollbacktype\" value=\"", htmlspecialchars($_REQUEST['rollbacktype']), "\" />\n";
 				if (isset($_POST['async'])) {
 					echo "<input type=\"hidden\" name=\"async\"", htmlspecialchars($_REQUEST['async']), "\" />\n";
 				}
@@ -4439,7 +4439,7 @@ class Emaj extends Plugin {
 				unlink($testFileName);
 			}
 
-			$rlbkId = $this->emajdb->asyncRollbackGroups($_POST['groups'],$_POST['mark'],$_POST['rollbacktype']=='logged', $psqlExe, $this->conf['temp_dir'].$sep);
+			$rlbkId = $this->emajdb->asyncRollbackGroups($_POST['groups'],$_POST['mark'],$_POST['rollbacktype']=='logged', $psqlExe, $this->conf['temp_dir'].$sep, true);
 			$this->show_rollbacks(sprintf($this->lang['emajasyncrlbkstarted'],$rlbkId));
 			exit;
 		}
