@@ -57,6 +57,7 @@
 	$plugin_lang['emajasextension'] = 'installée comme extension';
 	$plugin_lang['emajasscript'] = 'installée par script';
 	$plugin_lang['emajtooold'] = 'Désolé, cette version d\'E-Maj (%s) est trop ancienne. La version minimum supportée par ce plugin est %s.';
+	$plugin_lang['emajtooyoung'] = 'Désolé, cette version d\'E-Maj (%s) est trop récente. Utilisez le client Emaj_web pour accéder à cette base de donnéees';
 	$plugin_lang['emajversionmorerecent'] = 'Une version plus récente d\'E-Maj existe. Contactez votre administrateur des bases de données.';
 	$plugin_lang['emajwebversionmorerecent'] = 'Une version plus récente d\'Emaj_web existe probablement. Contactez votre administrateur des bases de données.';
 	$plugin_lang['emajdiskspace'] = 'Place disque occupée par l\'environnement E-Maj : %s de la base de données courante.';

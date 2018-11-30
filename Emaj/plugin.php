@@ -15,6 +15,7 @@ class Emaj extends Plugin {
 	protected $oldest_supported_emaj_version_num = 1100;
 	protected $last_known_emaj_version = '2.3.1';				// Most recent emaj version known by the plugin
 	protected $last_known_emaj_version_num = 20301;
+	protected $last_supported_emaj_version_num = 20301;			// Last supported emaj version for the ppa plugin
 	protected $previous_cumlogrows;								// used to compute accumulated updates in marks'table
 
 /********************************************************************************************************
@@ -1411,6 +1412,9 @@ class Emaj extends Plugin {
 			echo "<p>{$this->lang['emajversion']}{$this->emajdb->getEmajVersion()} ({$installationMode})</p>\n";
 			if ($this->emajdb->getNumEmajVersion() < $this->oldest_supported_emaj_version_num) {
 				echo "<p>" . sprintf($this->lang['emajtooold'],$this->emajdb->getEmajVersion(),$this->oldest_supported_emaj_version) . "</p>\n";
+				$emajOK= 0;
+			} elseif ($this->emajdb->getNumEmajVersion() > $this->last_supported_emaj_version_num){
+				echo "<p>" . sprintf($this->lang['emajtooyoung'],$this->emajdb->getEmajVersion()) . "</p>\n";
 				$emajOK= 0;
 			} else {
 				if ($this->emajdb->getNumEmajVersion() <> 999999) {
@@ -4813,7 +4817,8 @@ class Emaj extends Plugin {
 		if ($urlvar != 'action=emaj_envir') {
 			// if Emaj is not usable for this database, only display a message
 			if (!(isset($this->emajdb) && $this->emajdb->isEnabled() && $this->emajdb->isAccessible()
-				  && $this->emajdb->getNumEmajVersion() >= $this->oldest_supported_emaj_version_num)) {
+				  && $this->emajdb->getNumEmajVersion() >= $this->oldest_supported_emaj_version_num
+				  && $this->emajdb->getNumEmajVersion() <= $this->last_supported_emaj_version_num)) {
 				echo "<div class=\"topbar\"><table style=\"width: 100%\"><tr><td><span class=\"platform\">";
 				$link = "<a href=\"plugin.php?plugin={$this->name}&amp;action=emaj_envir&amp;{$misc->href}\">\"{$this->lang['emajenvir']}\"</a>";
 				echo sprintf($this->lang['emajnotavail'], $link);
@@ -4825,7 +4830,8 @@ class Emaj extends Plugin {
 		// generate the E-Maj header
 		$currTime = date('H:i:s');
 		if (isset($this->emajdb) && $this->emajdb->isEnabled() && $this->emajdb->isAccessible()
-			&& $this->emajdb->getNumEmajVersion() >= $this->oldest_supported_emaj_version_num) {
+			&& $this->emajdb->getNumEmajVersion() >= $this->oldest_supported_emaj_version_num
+			&& $this->emajdb->getNumEmajVersion() <= $this->last_supported_emaj_version_num) {
 			$emajVersion = "E-Maj&nbsp;{$this->emajdb->getEmajVersion()}&nbsp;&nbsp;-&nbsp;&nbsp;";
 		} else {
 			$emajVersion = '';
