@@ -14,3 +14,6 @@ phpPgAdmin interface.
 
 The PostgreSQL E-Maj extension can be donwloaded either from PGXN.org or 
 from pgfoundry.org.
+
+The development of this plugin is not stopped. You can look at the Emaj_web 
+project instead (https://github.com/dalibo/emaj_web)
